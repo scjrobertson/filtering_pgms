@@ -1,0 +1,8 @@
+# Ignore doc and build
+build
+
+# Weird files
+*.cc~
+*.hpp~
+*.swp
+*.sh~

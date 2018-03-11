@@ -1,0 +1,41 @@
+# iPhone OS CMake Toolchain definition
+
+SET(CMAKE_SYSTEM_NAME      "iPhone")
+SET(CMAKE_SYSTEM_VERSION   "${SDK_VERSION}")
+SET(CMAKE_SYSTEM_PROCESSOR "arm")
+
+SET_PROPERTY(GLOBAL PROPERTY TARGET_SUPPORTS_SHARED_LIBS TRUE)
+
+SET(MINVER "${DEPLOYMENT_VERSION}")
+SET(SDKVER "${SDK_VERSION}")
+SET(DEVTOOL "Developer") # Default
+# SET(DEVTOOL "Xcode4")    # Experimental
+SET(DEVROOT "/${DEVTOOL}/Platforms/iPhoneOS.platform/Developer")
+SET(SDKROOT "${DEVROOT}/SDKs/iPhoneOS${SDKVER}.sdk")
+# SET(CMAKE_OSX_SYSROOT "${SDKROOT}")
+SET(CMAKE_OSX_SYSROOT "iphoneos${SDKVER}")
+
+INCLUDE(CMakeForceCompiler)
+CMAKE_FORCE_C_COMPILER("${DEVROOT}/usr/bin/gcc-4.2" iPhone-gcc-4.2)
+CMAKE_FORCE_CXX_COMPILER("${DEVROOT}/usr/bin/g++-4.2" iPhone-g++-4.2)
+
+SET(CMAKE_C_FLAGS_INIT   "-pipe -no-cpp-precomp --sysroot=${SDKROOT} -miphoneos-version-min=${MINVER} -std=c99")
+SET(CMAKE_CXX_FLAGS_INIT "-pipe -no-cpp-precomp --sysroot=${SDKROOT} -miphoneos-version-min=${MINVER}")
+
+INCLUDE_DIRECTORIES(SYSTEM "${SDKROOT}/usr/include")
+INCLUDE_DIRECTORIES(SYSTEM "${SDKROOT}/opt/iphone-${SDKVER}/include")
+INCLUDE_DIRECTORIES(SYSTEM "${SDKROOT}/usr/local/iphone-${SDKVER}/include")
+
+LINK_DIRECTORIES("${SDKROOT}/usr/lib")
+LINK_DIRECTORIES("${SDKROOT}/opt/iphone-${SDKVER}/lib")
+LINK_DIRECTORIES("${SDKROOT}/usr/local/iphone-${SDKVER}/lib")
+
+SET(CMAKE_FIND_ROOT_PATH "${SDKROOT}" "/opt/iphone-${SDKVER}/" "/usr/local/iphone-${SDKVER}/")
+SET(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM BOTH)
+SET(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
+SET(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
+
+SET(IPHONE 1)
+SET(IPHONEOS 1)
+SET(IPHONEOS_VERSION ${SDKVER})
+SET(APPLE 1)
