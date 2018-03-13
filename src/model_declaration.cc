@@ -34,7 +34,7 @@ LinearModel::LinearModel() {
 	R *= r0;
 
 	// Simulation length
-	simulationLength = 500;
+	simulationLength = 50;
 
 	// Birth locations
 	birthTimes = {0, 10};
@@ -183,7 +183,7 @@ std::vector<std::vector<ColVector<double>>> LinearModel::getMeasurements() const
 
 std::vector<rcptr<filters::gmm>> LinearModel::getPriors(unsigned timeStep) const {
 	unsigned N = targetPriors.size();
-	std::vector<rcptr<filters::gmm>> newTargetPriors(N);
+	std::vector<rcptr<filters::gmm>> newTargetPriors; newTargetPriors.clear();
 
 	for (unsigned i = 0; i < N; i++) {
 		if ( birthTimes[i] == timeStep ) {

@@ -21,9 +21,6 @@
 int main(int, char *argv[]) {
 	
 	rcptr<LinearModel> model = uniqptr<LinearModel>(new LinearModel());
-	std::vector<std::vector<rcptr<filters::gaussian>>> groundTruth = model->getGroundTruthBeliefs();
-	std::vector<std::vector<ColVector<double>>> measurements = model->getMeasurements();
-
 	std::vector<std::vector<rcptr<filters::gmm>>> stateEstimates = runLinearGaussianFilter(model);
 
 	return 0;
