@@ -81,7 +81,7 @@ LinearModel::LinearModel() {
 	observationSpaceRange[1] = ColVector<double>(2);
 	observationSpaceRange[1][0] = -50; observationSpaceRange[1][1] = 50;
 
-	lambda = 60;
+	lambda = 2;
 
 	// Gaussian mixture pruning parameters
 	gmmComponentWeightThreshold = 1e-15;
