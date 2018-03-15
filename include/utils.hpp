@@ -9,4 +9,7 @@
 
 rcptr<filters::gmm> weakMarginalisation (rcptr<filters::gmm> gmm);
 
+bool haveIntersectingDomains(std::vector<unsigned short> a, 
+		std::vector<unsigned short> b);
+
 #endif // UTILS_HPP

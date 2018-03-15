@@ -1,11 +1,16 @@
 #include "algorithmic_steps.hpp"
 #include <math.h>
 
+#include <map>
 #include "factor.hpp"
 #include "discretetable.hpp"
 #include "clustergraph.hpp"
 #include "lbp_cg.hpp"
 #include "lbu_cg.hpp"
+
+rcptr<FactorOperator> defaultInplaceNormalizer = uniqptr<FactorOperator>(new DiscreteTable_InplaceNormalize<unsigned short>);
+rcptr<FactorOperator> defaultNormalizer = uniqptr<FactorOperator>(new DiscreteTable_Normalize<unsigned short>);
+rcptr<FactorOperator> defaultMarginalizer = uniqptr<FactorOperator>(new DiscreteTable_Marginalize<unsigned short>);
 
 std::vector<std::vector<rcptr<filters::gmm>>> runLinearGaussianFilter(rcptr<LinearModel> model) {
 	std::vector<std::vector<rcptr<filters::gmm>>> targets; targets.clear(); targets.resize(model->simulationLength);
@@ -17,7 +22,7 @@ std::vector<std::vector<rcptr<filters::gmm>>> runLinearGaussianFilter(rcptr<Line
 	unsigned numberOfNewTargets = targetPriors.size();
 	for (unsigned j = 0; j < numberOfNewTargets; j++) targets[0].push_back(targetPriors[j]);
 
-	for (unsigned i = 1; i < model->simulationLength; i++) {
+	for (unsigned i = 1; i < 12; i++) {
 		// Prediction
 		std::vector<rcptr<filters::gmm>> predictedStates = predictMultipleTargetsLinear(model, targets[i-1]);	
 		std::vector<rcptr<filters::updateComponents>> kalmanComponents = createMultipleUpdateComponentsLinear(model, predictedStates);
@@ -179,10 +184,14 @@ Matrix<double> loopyBeliefUpdatePropagation (rcptr<LinearModel> linearModel,
 		Matrix<double> associationMatrix) {
 	unsigned numberOfTargets = associationMatrix.rows();
 	unsigned numberOfUpdateOptions = associationMatrix.cols();
+	
 	Matrix<double> gatedAssociations = gLinear::zeros<double>(numberOfTargets, numberOfUpdateOptions);
-	std::vector<std::vector<unsigned>> domains(numberOfTargets);
+	std::vector<std::vector<unsigned short>> domains(numberOfTargets);
 	
 	Matrix<double> updatedAssociations = gLinear::zeros<double>(numberOfTargets, numberOfUpdateOptions);
+	
+	std::vector<rcptr<Factor>> marginalAssociations(numberOfTargets);
+	std::vector<rcptr<Factor>> associationPriors(numberOfTargets);
 
 	// Gate the associations
 	for (unsigned i = 0; i < numberOfTargets; i++) {
@@ -191,11 +200,152 @@ Matrix<double> loopyBeliefUpdatePropagation (rcptr<LinearModel> linearModel,
 			if (associationMatrix[i][j] >= 0) {
 				gatedAssociations[i][j] = associationMatrix[i][j];
 				normalisingConstant += associationMatrix[i][j];
-				domains[i].push_back(j);
+				domains[i].push_back( (unsigned short) j);
 			} // if
 		} // for
+
+		// Normalise the association probabilities
 		for (unsigned j = 0; j < numberOfUpdateOptions; j++) gatedAssociations[i][j] /= normalisingConstant;
+
+		// Create the marginal association factors
+		std::map<std::vector<unsigned short>, FProb> sparseProbsMarginal;
+		std::map<std::vector<unsigned short>, FProb> sparseProbsPrior;
+		
+		rcptr<std::vector<unsigned short>> marginalDom = uniqptr<std::vector<unsigned short>>( new std::vector<unsigned short> (domains[i]));
+		rcptr<std::vector<unsigned short>> priorDom = uniqptr<std::vector<unsigned short>>( new std::vector<unsigned short> (domains[i]));
+
+		for (unsigned j = 0; j < domains[i].size(); j++) {
+			sparseProbsMarginal[{domains[i][j]}] = gatedAssociations[i][j]; 
+			sparseProbsPrior[{domains[i][j]}] = 1; 
+		} // for
+
+		marginalAssociations[i] = uniqptr<Factor> (new DiscreteTable<unsigned short>(
+					emdw::RVIds{i}, {marginalDom},
+					0.0, sparseProbsMarginal, 
+					0.0, 0.0,
+					false, defaultMarginalizer,
+					defaultInplaceNormalizer, defaultNormalizer) );
+
+		associationPriors[i] = uniqptr<Factor> (new DiscreteTable<unsigned short>(
+					emdw::RVIds{i}, {priorDom},
+					0.0, sparseProbsPrior, 
+					0.0, 0.0,
+					false, defaultMarginalizer,
+					defaultInplaceNormalizer, defaultNormalizer) );
 	} // for
-	
+
+
+	// Check for disjoint clusters
+	std::vector<bool> isNotDisjoint(numberOfTargets);
+	for (unsigned i = 0; i < numberOfTargets; i++) isNotDisjoint[i] = false;
+
+	std::vector<rcptr<Factor>> clusters;
+	for (unsigned i = 0; i < numberOfTargets; i++) {
+		unsigned short aSize = domains[i].size();
+
+		for (unsigned j = i+1; j < numberOfTargets; j++) {
+			if (haveIntersectingDomains(domains[i], domains[j])) {
+				isNotDisjoint[i] = true; isNotDisjoint[j] = true;
+
+				rcptr<Factor> product = associationPriors[i]->absorb(associationPriors[j]);
+				rcptr<DiscreteTable<unsigned short>> cancel = std::dynamic_pointer_cast<DiscreteTable<unsigned short>>(product);
+				emdw::RVIds scope = {i, j};
+
+				for (unsigned short k = 1; k < aSize; k++) cancel->setEntry(scope, emdw::RVVals{ k, k }, 0 );
+				product->inplaceNormalize();
+
+				clusters.push_back( product );
+			} // if
+		} // for
+	} // for
+
+	// Add in disjoint clusters
+	for (unsigned i = 0; i < numberOfTargets; i++) {
+		if ( isNotDisjoint[i] == false ) clusters.push_back( uniqptr<Factor> (marginalAssociations[i]->copy()) );
+	} // for
+
+	// Absorb in marginal associations
+	unsigned numberOfClusters = clusters.size();
+
+	std::vector<bool> isAlreadyConnected(numberOfClusters);
+	for (unsigned i = 0; i < numberOfClusters; i++) isAlreadyConnected[i] = false;
+
+	for (unsigned i = 0; i < numberOfTargets; i++) {
+		
+		emdw::RVIds assocationVariable = marginalAssociations[i]->getVars();
+
+		for (unsigned j = 0; j < numberOfClusters; j++) {
+			emdw::RVIds vars = clusters[j]->getVars();
+
+			if ( vars.size() == 1 ) {
+				if ( vars[0] == i && !isAlreadyConnected[j]) {
+					clusters[j]->inplaceAbsorb(marginalAssociations[i]);
+					clusters[j]->inplaceNormalize();
+					isAlreadyConnected[j] = true;
+				} // if
+			} else if (vars.size() == 2) {
+				if ( (vars[0] == i || vars[1] == i) && !isAlreadyConnected[j]) {
+					clusters[j]->inplaceAbsorb(marginalAssociations[i]);
+					clusters[j]->inplaceNormalize();
+					isAlreadyConnected[j] = true;
+				} // if
+			} // if
+		} // for
+	} // for
+
+
+	// Create the cluster graph
+	rcptr<ClusterGraph> clusterGraph = uniqptr<ClusterGraph>(new ClusterGraph(clusters));
+	std::map<Idx2, rcptr<Factor>> msgs; msgs.clear();
+	MessageQueue msgQ; msgQ.clear();
+
+	//
+	std::vector<rcptr<Factor>> finalAssociationProbs(numberOfTargets);
+	try {
+		// Pass messages until convergence
+		unsigned nMsg = loopyBU_CG(*clusterGraph, msgs, msgQ, 0.33);
+
+		for (unsigned i = 0; i < numberOfTargets; i++) {
+			emdw::RVIds nodeVars = {i};
+			finalAssociationProbs[i] = queryLBU_CG(*clusterGraph, msgs, nodeVars )->normalize();
+		} // for
+	} // try() 
+	catch (const char* msg) {
+		std::cerr << msg << std::endl;
+		throw;
+	} // catch()
+	catch (const std::string& msg) {
+		std::cerr << msg << std::endl;
+		throw;
+	} // catch()
+	catch (const std::exception& e) {
+		std::cerr << "Unhandled exception: " << e.what() << std::endl;
+		throw e;
+	} // catch()
+	catch(...) {
+		std::cerr << "An unknown exception / error occurred\n";
+		throw;
+	} // catch()
+
+	// Create updated association matrix
+	for (unsigned i = 0; i < numberOfTargets; i++) {
+		unsigned domainSize = domains[i].size();
+		double normalisingConstant = 0;
+		rcptr<DiscreteTable<unsigned short>> marginal = std::dynamic_pointer_cast<DiscreteTable<unsigned short>>(finalAssociationProbs[i]);
+
+		for (unsigned j = 0; j < domainSize; j++) {
+			double potential = marginal->potentialAt(emdw::RVIds{i}, emdw::RVVals{ domains[i][j] });
+			if (potential > 0.0) {
+				updatedAssociations[i][j] = potential;
+				normalisingConstant += potential;
+			} // if
+		} // for
+		
+		for (unsigned j = 0; j < numberOfUpdateOptions; j++) updatedAssociations[i][j] /= normalisingConstant;
+	} // for
+
+
+	std::cout << updatedAssociations << std::endl;
+
 	return updatedAssociations;
 } // loopyBeliefUpdatePropagation()

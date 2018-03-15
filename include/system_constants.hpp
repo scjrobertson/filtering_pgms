@@ -5,6 +5,8 @@
 #include "genvec.hpp"
 #include "genmat.hpp"
 #include "emdw.hpp"
+#include "factor.hpp"
+#include "discretetable.hpp"
 
 namespace filters {
 
@@ -31,6 +33,7 @@ namespace filters {
 		std::vector<ColVector<double>> mu;
 		std::vector<Matrix<double>> S;
 	};
+
 } // namespace
 
 #endif // SYSTEM_CONSTANTS_HPP

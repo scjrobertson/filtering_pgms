@@ -33,3 +33,20 @@ rcptr<filters::gmm> weakMarginalisation(rcptr<filters::gmm> gmm) {
 
 	return weakMarginal;
 } // weakMarginalisation()
+
+bool haveIntersectingDomains(std::vector<unsigned short> a, std::vector<unsigned short> b) {
+	unsigned aSize = a.size();
+	unsigned bSize = b.size();
+	bool doIntersect = false;
+
+	for (unsigned i = 0; i < aSize; i++) {
+		for (unsigned j = 0; j < bSize; j++) {
+			if (a[i] == b[i]) {  
+				doIntersect = true;
+				break;
+			} // if
+		}
+	} // for
+
+	return doIntersect;
+} // for
