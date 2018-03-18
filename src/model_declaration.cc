@@ -46,20 +46,26 @@ LinearModel::LinearModel() {
 	targetPriors[0]->w = {1.0};
 	
 	targetPriors[0]->mu = ColVector<double>(xDimension);
-	targetPriors[0]->mu[1] = 5; targetPriors[0]->mu[2] = 5;
-	targetPriors[0]->mu[2] = 1; targetPriors[0]->mu[2] = 1;
+	targetPriors[0]->mu[0] = 5; targetPriors[0]->mu[1] = 5;
+	targetPriors[0]->mu[2] = 1; targetPriors[0]->mu[3] = 1;
 
-	targetPriors[0]->S = 1*R;
+	targetPriors[0]->S = gLinear::zeros<double>(xDimension, xDimension);
+	targetPriors[0]->S(0, 0) = 1.0; targetPriors[0]->S(1, 1) = 1.0;
+	targetPriors[0]->S(2, 2) = 1.0; targetPriors[0]->S(3, 3) = 1.0;
+	
+	std::cout << targetPriors[0]->S << std::endl;
 
 	targetPriors[1] = uniqptr<filters::gaussian>(new filters::gaussian);
 	targetPriors[1]->id = 1;
 	targetPriors[1]->w = {1.0};
 	
 	targetPriors[1]->mu = ColVector<double>(xDimension);
-	targetPriors[1]->mu[1] = 5; targetPriors[1]->mu[2] = 5;
-	targetPriors[1]->mu[2] = 1; targetPriors[1]->mu[2] = 1;
+	targetPriors[1]->mu[0] = 5; targetPriors[1]->mu[1] = 5;
+	targetPriors[1]->mu[2] = 1; targetPriors[1]->mu[3] = 1;
 
-	targetPriors[1]->S = 1*R;
+	targetPriors[1]->S = gLinear::zeros<double>(xDimension, xDimension);
+	targetPriors[1]->S(0, 0) = 1.0; targetPriors[1]->S(1, 1) = 1.0;
+	targetPriors[1]->S(2, 2) = 1.0; targetPriors[1]->S(3, 3) = 1.0;
 	
 	// Meaurement model
 	C = gLinear::zeros<double>(zDimension, xDimension);
@@ -96,22 +102,24 @@ LinearModel::LinearModel() {
 } // Constructor()
 
 void LinearModel::generateGroundTruth() {
+	this->groundTruth.clear();
+	groundTruth.resize(this->simulationLength);
 	this->beliefs.clear();
 	beliefs.resize(this->simulationLength);
 	this->measurements.resize(this->simulationLength);
 	this->cardinality.resize(this->simulationLength);
-	unsigned N = this->birthTimes.size();
+	unsigned numberOfTargets = this->birthTimes.size();
 
-        double seed = 100;
-	std::default_random_engine generator(seed);
+	std::default_random_engine generator(time(0));
 	std::poisson_distribution<unsigned> poisson(this->lambda);
 	std::uniform_real_distribution<double> uniform(0, 1.0);
 
 	unsigned targetCounter = 0;
 	// Add all targets starting at t = 0
-	for (unsigned i = 0; i < N; i++) {
+	for (unsigned i = 0; i < numberOfTargets; i++) {
 		if (this->birthTimes[i] == 0) {
-			beliefs[0].push_back( this->targetPriors[i] );
+			(this->groundTruth[0]).push_back(this->targetPriors[i]->mu);
+			(this->beliefs[0]).push_back( this->targetPriors[i] );
 			targetCounter++;
 		} // if
 	} // for
@@ -121,7 +129,7 @@ void LinearModel::generateGroundTruth() {
 	for (unsigned i = 0 ; i < xDimension; i++) identity(i, i) = 1;
 
 	for (unsigned i = 1; i < this->simulationLength; i++) {
-		(this->beliefs[i]).clear();
+		(this->beliefs[i]).clear(); (this->groundTruth[i]).clear();
 		unsigned currentTargetNumber = beliefs[i-1].size();
 		// Generate belief for exsiting targets;
 		for (unsigned j = 0; j < currentTargetNumber; j++) {
@@ -131,7 +139,8 @@ void LinearModel::generateGroundTruth() {
 			Matrix<double> covPred = (this->A)*(beliefs[i-1][j]->S)*((this->A).transpose()) + this->R;
 
 			// Generate a measurement
-			ColVector<double> zMeasurement = (this->C)*muPred + randomVector(this->zDimension, generator, 0, 4);
+			ColVector<double> muTruth = (this->A)*groundTruth[i-1][j] + this->u;
+			ColVector<double> zMeasurement = (this->C)*muTruth + randomVector(this->zDimension, generator, 0, 0.25);
 			if ( uniform(generator) <= this->detectionProbability ) this->measurements[i].push_back(1.0*zMeasurement);
 
 			int fail; double detCov;
@@ -139,17 +148,20 @@ void LinearModel::generateGroundTruth() {
 			ColVector<double> mu = muPred + K*( zMeasurement - (this->C)*muPred );
 			Matrix<double> S = ( identity - K*(this->C) )*covPred;
 
-			// If the target is still alive, add it to the ground truth.
+			// If the target is still alive, add it to the ground truth beliefs.
 			rcptr<filters::gaussian> posterior = uniqptr<filters::gaussian>(new filters::gaussian);
 			posterior->id = beliefs[i-1][j]->id;
 			posterior->w = 1;
 			posterior->mu = 1.0*mu;
 			posterior->S = 1.0*S;
 			(this->beliefs[i]).push_back(posterior);
+
+			// Add ground truths
+			(this->groundTruth[i]).push_back(muTruth);
 		} // for
 
 		// Add in clutter!
-		unsigned numberOfClutterMeasurements = (unsigned) poisson(generator);
+		unsigned numberOfClutterMeasurements = 0; //(unsigned) poisson(generator);
 		for (unsigned j = 0; j < numberOfClutterMeasurements; j++) {
 			ColVector<double> ranges = ColVector<double>(2);
 			ranges[0] = ((this->observationSpaceRange)[0][1] - (this->observationSpaceRange)[0][0])*uniform(generator) 
@@ -161,17 +173,27 @@ void LinearModel::generateGroundTruth() {
 		} // for
 		
 		// Add in new targets!
-		for (unsigned j = targetCounter; j < N; j++) {
+		for (unsigned j = targetCounter; j < numberOfTargets; j++) {
 			if ((i+1) == this->birthTimes[j]) {
-				(this->beliefs[i]).push_back( this->targetPriors[j] );
+				(this->groundTruth[i]).push_back(this->targetPriors[j]->mu);
+				(this->beliefs[i]).push_back(this->targetPriors[j]);
 				targetCounter++;
 			} // if
 		} // for
 
 		// Add in cardinality distribubtion
 		cardinality[i] = (this->beliefs[i]).size();
+
+		// Print out
+		//unsigned numberOfMeasurements = measurements[i].size();
+		//for (unsigned j = 0; j < numberOfMeasurements; j++) std::cout << i << ";" << measurements[i][j][0] << ";" << measurements[i][j][1] << std::endl;
 	} // for
 } // generateGroundTruth()
+
+
+std::vector<std::vector<ColVector<double>>> LinearModel::getGroundTruth() const {
+	return groundTruth;	
+} // getGroundTruth()
 
 std::vector<std::vector<rcptr<filters::gaussian>>> LinearModel::getGroundTruthBeliefs() const {
 	return beliefs;	

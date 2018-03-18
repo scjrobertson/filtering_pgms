@@ -15,14 +15,20 @@ rcptr<filters::gmm> weakMarginalisation(rcptr<filters::gmm> gmm) {
 	// Compute the mached mean
 	for (unsigned i = 0; i < numberOfComponents; i++) {
 		normalisedWeight[i] = (gmm->w[i])/w;
+
+		//std::cout << "w[" << i << "]: " << gmm->w[i] << std::endl;
+		//std::cout << "mu[" << i << "]: " << gmm->mu[i] << std::endl;
 		mu += normalisedWeight[i]*(gmm->mu[i]);
 	} // for
+	//std::cout << "mu: " << mu << std::endl;
 
 	// Compute the matched covariance
 	for (unsigned i = 0; i < numberOfComponents; i++) {
 		ColVector<double> difference = (gmm->mu[i]) - mu;
+		//std::cout << "S[" << i << "]: " << gmm->S[i] << std::endl;
 		S += normalisedWeight[i]*( (gmm->S[i]) + (difference)*(difference.transpose()) );
 	} // for
+	//std::cout << "S: " << S << std::endl;
 
 	// Allocate the weak marginal
 	rcptr<filters::gmm> weakMarginal = uniqptr<filters::gmm>(new filters::gmm);

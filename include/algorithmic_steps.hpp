@@ -14,7 +14,7 @@ std::vector<rcptr<filters::gmm>> predictMultipleTargetsLinear(rcptr<LinearModel>
 std::vector<rcptr<filters::updateComponents>> createMultipleUpdateComponentsLinear(rcptr<LinearModel> model, 
 		std::vector<rcptr<filters::gmm>> targets);
 
-std::vector<std::vector<rcptr<filters::gmm>>> updateMultipleLinear(rcptr<LinearModel> model, 
+std::vector<std::vector<rcptr<filters::gmm>>> createUpdateOptionsLinear(rcptr<LinearModel> model, 
 		std::vector<rcptr<filters::gmm>> predictedStates,
 		std::vector<rcptr<filters::updateComponents>> kalmanComponents,
 		std::vector<ColVector<double>> measurements);
@@ -25,5 +25,9 @@ Matrix<double> createAssociationMatrix(rcptr<LinearModel> model,
 
 Matrix<double> loopyBeliefUpdatePropagation(rcptr<LinearModel> model,
 		Matrix<double> associationMatrix);
+
+std::vector<rcptr<filters::gmm>> updateTargetStatesLinear(std::vector<std::vector<rcptr<filters::gmm>>> updateOptions,
+		Matrix<double> associationMatrix,
+		Matrix<double> updatedAssociations);
 
 #endif // ALGORITHMIC_STEPS_HPP

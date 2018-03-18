@@ -22,19 +22,24 @@ std::vector<std::vector<rcptr<filters::gmm>>> runLinearGaussianFilter(rcptr<Line
 	unsigned numberOfNewTargets = targetPriors.size();
 	for (unsigned j = 0; j < numberOfNewTargets; j++) targets[0].push_back(targetPriors[j]);
 
-	for (unsigned i = 1; i < 12; i++) {
+	for (unsigned i = 1; i < 3; i++) {
+		std::cout << "\nTime-step " << i << "." << std::endl;
+
 		// Prediction
 		std::vector<rcptr<filters::gmm>> predictedStates = predictMultipleTargetsLinear(model, targets[i-1]);	
 		std::vector<rcptr<filters::updateComponents>> kalmanComponents = createMultipleUpdateComponentsLinear(model, predictedStates);
 
-		// Measurement update
-		std::vector< std::vector<rcptr<filters::gmm>>> updateOptions = updateMultipleLinear(model, predictedStates, kalmanComponents, measurements[i]);
+		// Data Association
+		std::vector< std::vector<rcptr<filters::gmm>>> updateOptions = createUpdateOptionsLinear(model, predictedStates, 
+				kalmanComponents, measurements[i]);
 		Matrix<double> associationMatrix = createAssociationMatrix(model, measurements[i].size(), updateOptions);
 		Matrix<double> updatedAssociations = loopyBeliefUpdatePropagation(model, associationMatrix);
 
-		// Re-allocate the existing targets
-		unsigned currentTargetNumber = targets[i-1].size(); targets[i].resize(currentTargetNumber);
-		for (unsigned j = 0; j < currentTargetNumber; j++) targets[i][j] = predictedStates[j];
+		// Measurement Update
+		std::cout << associationMatrix << std::endl;
+		std::cout << updatedAssociations << std::endl;
+		
+		targets[i] = updateTargetStatesLinear(updateOptions, associationMatrix, updatedAssociations);
 
 		// Add in new targets
 		std::vector<rcptr<filters::gmm>> targetPriors =  model->getPriors(i);	
@@ -64,6 +69,9 @@ std::vector<rcptr<filters::gmm>> predictMultipleTargetsLinear(rcptr<LinearModel>
 			predictedGmm->w[j] = targets[i]->w[j];
 			predictedGmm->mu[j] = (model->A)*(targets[i]->mu[j]) + model->u;
 			predictedGmm->S[j] = (model->A)*(targets[i]->S[j])*((model->A).transpose()) + model->R;
+
+			std::cout << "S[" << j << "]: " << targets[i]->S[j] << std::endl;
+			std::cout << "predS[" << j << "]: " << predictedGmm->S[j] << std::endl;
 		} // for
 
 		predictedTargets[i] = predictedGmm;
@@ -114,7 +122,7 @@ std::vector<rcptr<filters::updateComponents>> createMultipleUpdateComponentsLine
 	return updateComponents;
 } // predictMultipleTargetsLinear()
 
-std::vector< std::vector<rcptr<filters::gmm>>> updateMultipleLinear(rcptr<LinearModel> model, 
+std::vector< std::vector<rcptr<filters::gmm>>> createUpdateOptionsLinear(rcptr<LinearModel> model, 
 		std::vector<rcptr<filters::gmm>> predictedStates,
 		std::vector<rcptr<filters::updateComponents>> kalmanComponents,
 		std::vector<ColVector<double>> z
@@ -344,8 +352,36 @@ Matrix<double> loopyBeliefUpdatePropagation (rcptr<LinearModel> linearModel,
 		for (unsigned j = 0; j < numberOfUpdateOptions; j++) updatedAssociations[i][j] /= normalisingConstant;
 	} // for
 
-
-	std::cout << updatedAssociations << std::endl;
-
 	return updatedAssociations;
 } // loopyBeliefUpdatePropagation()
+
+std::vector<rcptr<filters::gmm>> updateTargetStatesLinear(std::vector<std::vector<rcptr<filters::gmm>>> updateOptions,
+		Matrix<double> associationMatrix,
+		Matrix<double> updatedAssociations) {
+
+	unsigned numberOfTargets = associationMatrix.rows();
+	unsigned numberOfUpdateOptions = associationMatrix.cols();
+
+	std::vector<rcptr<filters::gmm>> updatedTargets(numberOfTargets);
+
+	for (unsigned i = 0; i < numberOfTargets; i++) {
+		rcptr<filters::gmm> gmm = uniqptr<filters::gmm>(new filters::gmm);
+		(gmm->w).clear(); (gmm->mu).clear(); (gmm->S).clear();
+
+		unsigned numberOfMixtureComponents = (updateOptions[i][0]->w).size();
+		for (unsigned j = 0; j < numberOfUpdateOptions; j++) {
+			if (updatedAssociations[i][j] > 0.0) { // Assumes loopyBeliefUpdatePropagation gates final probabilities
+				double associationWeight = updatedAssociations[i][j]/associationMatrix[i][j];
+
+				for (unsigned k = 0; k < numberOfMixtureComponents; k++) {
+					(gmm->w).push_back(associationWeight*(updateOptions[i][j]->w[k]));
+					(gmm->mu).push_back(associationWeight*(updateOptions[i][j]->mu[k]));
+					(gmm->S).push_back(associationWeight*(updateOptions[i][j]->S[k]));
+				} // for
+			} // if
+		} // for
+		updatedTargets[i] = weakMarginalisation(gmm);
+	} // for
+
+	return updatedTargets;
+} // updatedTargetStatesLinear()

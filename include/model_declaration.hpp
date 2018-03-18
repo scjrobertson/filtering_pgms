@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <random>
+#include <ctime>
 #include "system_constants.hpp"
 #include "genvec.hpp"
 #include "genmat.hpp"
@@ -47,6 +48,7 @@ class LinearModel {
 		int lambda;
 
 	public:
+		std::vector<std::vector<ColVector<double>>> groundTruth;
 		std::vector<std::vector<rcptr<filters::gaussian>>> beliefs;
 		std::vector<unsigned> cardinality;
 
@@ -57,6 +59,7 @@ class LinearModel {
 		void generateGroundTruth();
 
 	public:
+		std::vector<std::vector<ColVector<double>>> getGroundTruth() const;
 		std::vector<std::vector<rcptr<filters::gaussian>>> getGroundTruthBeliefs() const;
 		std::vector<std::vector<ColVector<double>>> getMeasurements() const;
 
