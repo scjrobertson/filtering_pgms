@@ -53,8 +53,6 @@ LinearModel::LinearModel() {
 	targetPriors[0]->S(0, 0) = 1.0; targetPriors[0]->S(1, 1) = 1.0;
 	targetPriors[0]->S(2, 2) = 1.0; targetPriors[0]->S(3, 3) = 1.0;
 	
-	std::cout << targetPriors[0]->S << std::endl;
-
 	targetPriors[1] = uniqptr<filters::gaussian>(new filters::gaussian);
 	targetPriors[1]->id = 1;
 	targetPriors[1]->w = {1.0};
@@ -86,6 +84,8 @@ LinearModel::LinearModel() {
 	
 	observationSpaceRange[1] = ColVector<double>(2);
 	observationSpaceRange[1][0] = -50; observationSpaceRange[1][1] = 50;
+
+	observationSpaceVolume = 1e4;
 
 	lambda = 2;
 
@@ -161,7 +161,7 @@ void LinearModel::generateGroundTruth() {
 		} // for
 
 		// Add in clutter!
-		unsigned numberOfClutterMeasurements = 0; //(unsigned) poisson(generator);
+		unsigned numberOfClutterMeasurements = (unsigned) poisson(generator);
 		for (unsigned j = 0; j < numberOfClutterMeasurements; j++) {
 			ColVector<double> ranges = ColVector<double>(2);
 			ranges[0] = ((this->observationSpaceRange)[0][1] - (this->observationSpaceRange)[0][0])*uniform(generator) 

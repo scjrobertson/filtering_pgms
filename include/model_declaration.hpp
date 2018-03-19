@@ -46,6 +46,7 @@ class LinearModel {
 	public:
 		std::vector<ColVector<double>> observationSpaceRange;
 		int lambda;
+		double observationSpaceVolume;
 
 	public:
 		std::vector<std::vector<ColVector<double>>> groundTruth;

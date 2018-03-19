@@ -22,7 +22,7 @@ std::vector<std::vector<rcptr<filters::gmm>>> runLinearGaussianFilter(rcptr<Line
 	unsigned numberOfNewTargets = targetPriors.size();
 	for (unsigned j = 0; j < numberOfNewTargets; j++) targets[0].push_back(targetPriors[j]);
 
-	for (unsigned i = 1; i < 3; i++) {
+	for (unsigned i = 1; i < model->simulationLength; i++) {
 		std::cout << "\nTime-step " << i << "." << std::endl;
 
 		// Prediction
@@ -42,8 +42,7 @@ std::vector<std::vector<rcptr<filters::gmm>>> runLinearGaussianFilter(rcptr<Line
 		targets[i] = updateTargetStatesLinear(updateOptions, associationMatrix, updatedAssociations);
 
 		// Add in new targets
-		std::vector<rcptr<filters::gmm>> targetPriors =  model->getPriors(i);	
-		unsigned numberOfNewTargets = targetPriors.size();
+		targetPriors =  model->getPriors(i); numberOfNewTargets = targetPriors.size();
 		for (unsigned j = 0; j < numberOfNewTargets; j++) targets[i].push_back(targetPriors[j]);
 	} // for
 
@@ -69,9 +68,6 @@ std::vector<rcptr<filters::gmm>> predictMultipleTargetsLinear(rcptr<LinearModel>
 			predictedGmm->w[j] = targets[i]->w[j];
 			predictedGmm->mu[j] = (model->A)*(targets[i]->mu[j]) + model->u;
 			predictedGmm->S[j] = (model->A)*(targets[i]->S[j])*((model->A).transpose()) + model->R;
-
-			std::cout << "S[" << j << "]: " << targets[i]->S[j] << std::endl;
-			std::cout << "predS[" << j << "]: " << predictedGmm->S[j] << std::endl;
 		} // for
 
 		predictedTargets[i] = predictedGmm;
@@ -111,7 +107,7 @@ std::vector<rcptr<filters::updateComponents>> createMultipleUpdateComponentsLine
 
 			Matrix<double> innovation = (eye - (kalmanComponents->K[j])*(model->C));
 
-			kalmanComponents->w[j] = (predictedStates[i]->w[j])*( 1.0/( pow(1.0/det, 0.5)*pow(M_PI, 0.5*model->zDimension) ));
+			kalmanComponents->w[j] = (predictedStates[i]->w[j])*( 1.0/( pow(det, -0.5)*pow(2*M_PI, 0.5*model->zDimension) ));
 			kalmanComponents->mu[j] = innovation*(predictedStates[i]->mu[j]);
 			kalmanComponents->S[j] = innovation*(predictedStates[i]->S[j]);
 		} // for
@@ -143,7 +139,7 @@ std::vector< std::vector<rcptr<filters::gmm>>> createUpdateOptionsLinear(rcptr<L
 		(predictedComponent->S).resize(numberOfMixtureComponents);
 
 		for (unsigned j = 0; j < numberOfMixtureComponents; j++) {
-			predictedComponent->w[j] = (1 - model->detectionProbability)*predictedStates[i]->w[j];
+			predictedComponent->w[j] = (1 - model->detectionProbability)*(predictedStates[i]->w[j])/(model->observationSpaceVolume);
 			predictedComponent->mu[j] = predictedStates[i]->mu[j];
 			predictedComponent->S[j] = predictedStates[i]->S[j];
 		} // for
@@ -275,9 +271,6 @@ Matrix<double> loopyBeliefUpdatePropagation (rcptr<LinearModel> linearModel,
 	// Absorb in marginal associations
 	unsigned numberOfClusters = clusters.size();
 
-	std::vector<bool> isAlreadyConnected(numberOfClusters);
-	for (unsigned i = 0; i < numberOfClusters; i++) isAlreadyConnected[i] = false;
-
 	for (unsigned i = 0; i < numberOfTargets; i++) {
 		
 		emdw::RVIds assocationVariable = marginalAssociations[i]->getVars();
@@ -286,16 +279,14 @@ Matrix<double> loopyBeliefUpdatePropagation (rcptr<LinearModel> linearModel,
 			emdw::RVIds vars = clusters[j]->getVars();
 
 			if ( vars.size() == 1 ) {
-				if ( vars[0] == i && !isAlreadyConnected[j]) {
+				if ( vars[0] == i ) {
 					clusters[j]->inplaceAbsorb(marginalAssociations[i]);
 					clusters[j]->inplaceNormalize();
-					isAlreadyConnected[j] = true;
 				} // if
 			} else if (vars.size() == 2) {
-				if ( (vars[0] == i || vars[1] == i) && !isAlreadyConnected[j]) {
+				if ( (vars[0] == i || vars[1] == i) ) {
 					clusters[j]->inplaceAbsorb(marginalAssociations[i]);
 					clusters[j]->inplaceNormalize();
-					isAlreadyConnected[j] = true;
 				} // if
 			} // if
 		} // for
@@ -375,8 +366,8 @@ std::vector<rcptr<filters::gmm>> updateTargetStatesLinear(std::vector<std::vecto
 
 				for (unsigned k = 0; k < numberOfMixtureComponents; k++) {
 					(gmm->w).push_back(associationWeight*(updateOptions[i][j]->w[k]));
-					(gmm->mu).push_back(associationWeight*(updateOptions[i][j]->mu[k]));
-					(gmm->S).push_back(associationWeight*(updateOptions[i][j]->S[k]));
+					(gmm->mu).push_back(1.0*updateOptions[i][j]->mu[k]);
+					(gmm->S).push_back(1.0*updateOptions[i][j]->S[k]);
 				} // for
 			} // if
 		} // for
