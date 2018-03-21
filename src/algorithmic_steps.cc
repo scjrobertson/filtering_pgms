@@ -14,7 +14,6 @@ rcptr<FactorOperator> defaultMarginalizer = uniqptr<FactorOperator>(new Discrete
 
 std::vector<std::vector<rcptr<filters::gmm>>> runLinearGaussianFilter(rcptr<LinearModel> model) {
 	std::vector<std::vector<rcptr<filters::gmm>>> targets; targets.clear(); targets.resize(model->simulationLength);
-	std::vector<std::vector<rcptr<filters::gaussian>>> groundTruth = model->getGroundTruthBeliefs();
 	std::vector<std::vector<ColVector<double>>> measurements = model->getMeasurements();
 
 	// Add target prior for t=0
@@ -23,7 +22,7 @@ std::vector<std::vector<rcptr<filters::gmm>>> runLinearGaussianFilter(rcptr<Line
 	for (unsigned j = 0; j < numberOfNewTargets; j++) targets[0].push_back(targetPriors[j]);
 
 	for (unsigned i = 1; i < model->simulationLength; i++) {
-		std::cout << "\nTime-step " << i << "." << std::endl;
+		//std::cout << "\nTime-step " << i << "." << std::endl;
 
 		// Prediction
 		std::vector<rcptr<filters::gmm>> predictedStates = predictMultipleTargetsLinear(model, targets[i-1]);	
@@ -35,10 +34,7 @@ std::vector<std::vector<rcptr<filters::gmm>>> runLinearGaussianFilter(rcptr<Line
 		Matrix<double> associationMatrix = createAssociationMatrix(model, measurements[i].size(), updateOptions);
 		Matrix<double> updatedAssociations = loopyBeliefUpdatePropagation(model, associationMatrix);
 
-		// Measurement Update
-		std::cout << associationMatrix << std::endl;
-		std::cout << updatedAssociations << std::endl;
-		
+		// Measurement Updates
 		targets[i] = updateTargetStatesLinear(updateOptions, associationMatrix, updatedAssociations);
 
 		// Add in new targets

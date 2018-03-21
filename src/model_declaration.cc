@@ -24,7 +24,7 @@ LinearModel::LinearModel() {
 	A(2, 2) = 1; A(3, 3) = 1;
 
 	u = ColVector<double>(xDimension); u.assignToAll(0.0);
-	
+
 	r0 = 0.3;
 	R = gLinear::zeros<double>(xDimension, xDimension);
 	R(0, 0) = pow(samplingPeriod,3)/3; R(1, 1) = pow(samplingPeriod,3)/3;
@@ -41,29 +41,35 @@ LinearModel::LinearModel() {
 	deathTimes = {100, 150};
 	targetPriors.resize(2);
 
-	targetPriors[0] = uniqptr<filters::gaussian>(new filters::gaussian);
+	// Target 1
+	targetPriors[0] = uniqptr<filters::gmm>(new filters::gmm);
 	targetPriors[0]->id = 0;
 	targetPriors[0]->w = {1.0};
 	
-	targetPriors[0]->mu = ColVector<double>(xDimension);
-	targetPriors[0]->mu[0] = 5; targetPriors[0]->mu[1] = 5;
-	targetPriors[0]->mu[2] = 1; targetPriors[0]->mu[3] = 1;
+	(targetPriors[0]->mu).resize(1);
+	targetPriors[0]->mu[0] = ColVector<double>(xDimension);
+	targetPriors[0]->mu[0][0] = 5; targetPriors[0]->mu[0][1] = 5;
+	targetPriors[0]->mu[0][2] = 1; targetPriors[0]->mu[0][3] = 1;
 
-	targetPriors[0]->S = gLinear::zeros<double>(xDimension, xDimension);
-	targetPriors[0]->S(0, 0) = 1.0; targetPriors[0]->S(1, 1) = 1.0;
-	targetPriors[0]->S(2, 2) = 1.0; targetPriors[0]->S(3, 3) = 1.0;
+	(targetPriors[0]->S).resize(1);
+	targetPriors[0]->S[0] = gLinear::zeros<double>(xDimension, xDimension);
+	targetPriors[0]->S[0](0, 0) = 1.0; targetPriors[0]->S[0](1, 1) = 1.0;
+	targetPriors[0]->S[0](2, 2) = 1.0; targetPriors[0]->S[0](3, 3) = 1.0;
 	
-	targetPriors[1] = uniqptr<filters::gaussian>(new filters::gaussian);
+	// Target 2
+	targetPriors[1] = uniqptr<filters::gmm>(new filters::gmm);
 	targetPriors[1]->id = 1;
 	targetPriors[1]->w = {1.0};
 	
-	targetPriors[1]->mu = ColVector<double>(xDimension);
-	targetPriors[1]->mu[0] = 5; targetPriors[1]->mu[1] = 5;
-	targetPriors[1]->mu[2] = 1; targetPriors[1]->mu[3] = 1;
+	(targetPriors[1]->mu).resize(1);
+	targetPriors[1]->mu[0] = ColVector<double>(xDimension);
+	targetPriors[1]->mu[0][0] = 5; targetPriors[1]->mu[0][1] = 5;
+	targetPriors[1]->mu[0][2] = 1; targetPriors[1]->mu[0][3] = 1;
 
-	targetPriors[1]->S = gLinear::zeros<double>(xDimension, xDimension);
-	targetPriors[1]->S(0, 0) = 1.0; targetPriors[1]->S(1, 1) = 1.0;
-	targetPriors[1]->S(2, 2) = 1.0; targetPriors[1]->S(3, 3) = 1.0;
+	(targetPriors[1]->S).resize(1);
+	targetPriors[1]->S[0] = gLinear::zeros<double>(xDimension, xDimension);
+	targetPriors[1]->S[0](0, 0) = 1.0; targetPriors[1]->S[0](1, 1) = 1.0;
+	targetPriors[1]->S[0](2, 2) = 1.0; targetPriors[1]->S[0](3, 3) = 1.0;
 	
 	// Meaurement model
 	C = gLinear::zeros<double>(zDimension, xDimension);
@@ -118,8 +124,8 @@ void LinearModel::generateGroundTruth() {
 	// Add all targets starting at t = 0
 	for (unsigned i = 0; i < numberOfTargets; i++) {
 		if (this->birthTimes[i] == 0) {
-			(this->groundTruth[0]).push_back(this->targetPriors[i]->mu);
 			(this->beliefs[0]).push_back( this->targetPriors[i] );
+			if ((this->targetPriors[i]->mu).size() > 0) (this->groundTruth[0]).push_back(this->targetPriors[i]->mu[0]);
 			targetCounter++;
 		} // if
 	} // for
@@ -135,8 +141,8 @@ void LinearModel::generateGroundTruth() {
 		for (unsigned j = 0; j < currentTargetNumber; j++) {
 			if ( i == (this->deathTimes[ beliefs[i-1][j]->id ]) ) continue;
 
-			ColVector<double> muPred = (this->A)*beliefs[i-1][j]->mu + this->u;
-			Matrix<double> covPred = (this->A)*(beliefs[i-1][j]->S)*((this->A).transpose()) + this->R;
+			ColVector<double> muPred = (this->A)*(beliefs[i-1][j]->mu[0]) + this->u;
+			Matrix<double> covPred = (this->A)*(beliefs[i-1][j]->S[0])*((this->A).transpose()) + this->R;
 
 			// Generate a measurement
 			ColVector<double> muTruth = (this->A)*groundTruth[i-1][j] + this->u;
@@ -149,11 +155,11 @@ void LinearModel::generateGroundTruth() {
 			Matrix<double> S = ( identity - K*(this->C) )*covPred;
 
 			// If the target is still alive, add it to the ground truth beliefs.
-			rcptr<filters::gaussian> posterior = uniqptr<filters::gaussian>(new filters::gaussian);
+			rcptr<filters::gmm> posterior = uniqptr<filters::gmm>(new filters::gmm);
 			posterior->id = beliefs[i-1][j]->id;
-			posterior->w = 1;
-			posterior->mu = 1.0*mu;
-			posterior->S = 1.0*S;
+			posterior->w = {1};
+			posterior->mu = {1.0*mu};
+			posterior->S = {1.0*S};
 			(this->beliefs[i]).push_back(posterior);
 
 			// Add ground truths
@@ -175,7 +181,7 @@ void LinearModel::generateGroundTruth() {
 		// Add in new targets!
 		for (unsigned j = targetCounter; j < numberOfTargets; j++) {
 			if ((i+1) == this->birthTimes[j]) {
-				(this->groundTruth[i]).push_back(this->targetPriors[j]->mu);
+				if ((this->targetPriors[j]->mu).size() > 0) (this->groundTruth[i]).push_back(this->targetPriors[j]->mu[0]);
 				(this->beliefs[i]).push_back(this->targetPriors[j]);
 				targetCounter++;
 			} // if
@@ -183,10 +189,6 @@ void LinearModel::generateGroundTruth() {
 
 		// Add in cardinality distribubtion
 		cardinality[i] = (this->beliefs[i]).size();
-
-		// Print out
-		//unsigned numberOfMeasurements = measurements[i].size();
-		//for (unsigned j = 0; j < numberOfMeasurements; j++) std::cout << i << ";" << measurements[i][j][0] << ";" << measurements[i][j][1] << std::endl;
 	} // for
 } // generateGroundTruth()
 
@@ -195,7 +197,7 @@ std::vector<std::vector<ColVector<double>>> LinearModel::getGroundTruth() const 
 	return groundTruth;	
 } // getGroundTruth()
 
-std::vector<std::vector<rcptr<filters::gaussian>>> LinearModel::getGroundTruthBeliefs() const {
+std::vector<std::vector<rcptr<filters::gmm>>> LinearModel::getGroundTruthBeliefs() const {
 	return beliefs;	
 } // getGroundTruthBeliefs()
 
@@ -204,18 +206,22 @@ std::vector<std::vector<ColVector<double>>> LinearModel::getMeasurements() const
 } // getMeasurements()
 
 std::vector<rcptr<filters::gmm>> LinearModel::getPriors(unsigned timeStep) const {
+
 	unsigned N = targetPriors.size();
 	std::vector<rcptr<filters::gmm>> newTargetPriors; newTargetPriors.clear();
 
 	for (unsigned i = 0; i < N; i++) {
 		if ( birthTimes[i] == timeStep ) {
-			rcptr<filters::gmm> prior = uniqptr<filters::gmm>(new filters::gmm);
-			prior->w = {targetPriors[i]->w};
-			prior->mu = {1.0*targetPriors[i]->mu};
-			prior->S = {1.0*targetPriors[i]->S};
-			newTargetPriors.push_back(prior);
+			if (targetPriors.size() > 0 ) {  
+				rcptr<filters::gmm> prior = uniqptr<filters::gmm>(new filters::gmm);
+				prior->w = {targetPriors[i]->w[0]};
+				prior->mu = {1.0*targetPriors[i]->mu[0]};
+				prior->S = {1.0*targetPriors[i]->S[0]};
+				newTargetPriors.push_back(prior);
+			}
 		} // if
 	} // for
+
 	return newTargetPriors;
 } // getPriors()
 

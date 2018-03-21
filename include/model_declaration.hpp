@@ -33,7 +33,7 @@ class LinearModel {
 		unsigned simulationLength;
 		std::vector<unsigned> birthTimes;
 		std::vector<unsigned> deathTimes;
-		std::vector<rcptr<filters::gaussian>> targetPriors;
+		std::vector<rcptr<filters::gmm>> targetPriors;
 
 	public:
 		Matrix<double> C;
@@ -50,7 +50,7 @@ class LinearModel {
 
 	public:
 		std::vector<std::vector<ColVector<double>>> groundTruth;
-		std::vector<std::vector<rcptr<filters::gaussian>>> beliefs;
+		std::vector<std::vector<rcptr<filters::gmm>>> beliefs;
 		std::vector<unsigned> cardinality;
 
 	public:
@@ -61,7 +61,7 @@ class LinearModel {
 
 	public:
 		std::vector<std::vector<ColVector<double>>> getGroundTruth() const;
-		std::vector<std::vector<rcptr<filters::gaussian>>> getGroundTruthBeliefs() const;
+		std::vector<std::vector<rcptr<filters::gmm>>> getGroundTruthBeliefs() const;
 		std::vector<std::vector<ColVector<double>>> getMeasurements() const;
 
 	public:
