@@ -23,3 +23,9 @@ if [ $RUN_OPTIONS = 1 ]
 then
 	.$RUN_PATH;
 fi
+
+# RUn the tests
+if [ $RUN_OPTIONS = 2 ]
+then
+	.$TEST_PATH
+fi

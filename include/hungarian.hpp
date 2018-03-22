@@ -5,17 +5,23 @@
 
 double hungarianCost(Matrix<double> perf);
 
-Matrix<double> stepOne(Matrix<double> pCond);
-
-Matrix<unsigned> stepTwo(Matrix<double> pCond);
-
-ColVector<unsigned> stepThree(Matrix<unsigned> mask, 
+void hungarianStepOne(Matrix<double> & pCond,
 		unsigned *stepNumber);
 
-Matrix<unsigned> stepFour(Matrix<double> pCond, 
-		Matrix<unsigned> mask, 
-		ColVector<unsigned> rowsCovered, 
-		ColVector<unsigned> columnsCovered, 
+void hungarianStepTwo(Matrix<double> & pCond,
+		Matrix<unsigned> & mask,
+		ColVector<unsigned> & rowsCovered,
+		ColVector<unsigned> & columnsCovered,
+		unsigned *stepNumber);
+
+void hungarianStepThree(Matrix<unsigned> & mask, 
+		ColVector<unsigned> & columnsCovered,
+		unsigned *stepNumber);
+
+void hungarianStepFour(Matrix<double> & pCond, 
+		Matrix<unsigned> & mask, 
+		ColVector<unsigned> & rowsCovered, 
+		ColVector<unsigned> & columnsCovered, 
 		unsigned *stepNumber);
 
 Matrix<unsigned> stepFive(Matrix<unsigned> mask, 

@@ -27,57 +27,56 @@ double hungarianCost(Matrix<double> perf) {
 		} // for
 	} // for
 	
-	unsigned stepNumber = 44;
-
-	Matrix<double> reduced = stepOne(pCond);
-	Matrix<unsigned> mask = stepTwo(reduced);
-
-	ColVector<unsigned> rowsCovered(maxSize); rowsCovered.assignToAll(0);
-	ColVector<unsigned> columnsCovered = stepThree(mask, &stepNumber);
-
-	Matrix<unsigned> newMask = stepFour(pCond, mask, rowsCovered, columnsCovered, &stepNumber);
-	
 	return 0.0;
 } // hungarianCost()
 
-Matrix<double> stepOne(Matrix<double> pCond) {
+void hungarianStepOne(Matrix<double> & pCond,
+		unsigned *stepNumber) {
 	unsigned numberOfRows = pCond.rows();
 	unsigned numberOfColumns = pCond.cols();
-	Matrix<double> reduced = gLinear::zeros<double>(numberOfRows, numberOfColumns);
 
 	for (unsigned i = 0; i < numberOfRows; i++) {
 		double minValue = std::numeric_limits<double>::infinity();
 		for (unsigned j = 0; j < numberOfColumns; j++) minValue = std::min(minValue, pCond(i, j));
-		for (unsigned j = 0; j < numberOfColumns; j++) reduced(i, j) = pCond(i,j) - minValue;
+		for (unsigned j = 0; j < numberOfColumns; j++) pCond(i, j) = pCond(i,j) - minValue;
 	} // for
 
-	return reduced;
+	*stepNumber = 1;
 } // stepOne()
 
-Matrix<unsigned> stepTwo(Matrix<double> pCond) {
+void hungarianStepTwo(Matrix<double> & pCond,
+		Matrix<unsigned> & mask,
+		ColVector<unsigned> & rowsCovered,
+		ColVector<unsigned> & columnsCovered,
+		unsigned *stepNumber) {
 	unsigned numberOfRows = pCond.rows();
 	unsigned numberOfColumns = pCond.cols();
 
-	Matrix<unsigned> mask(numberOfRows, numberOfColumns); mask.assignToAll(0);
-	ColVector<bool> rowsCovered(numberOfRows); rowsCovered.assignToAll(false);
-	ColVector<bool> columnsCovered(numberOfColumns); columnsCovered.assignToAll(false);
+	mask.resize(numberOfRows, numberOfColumns); mask.assignToAll(0);
+	rowsCovered.resize(numberOfRows); rowsCovered.assignToAll(0);
+	columnsCovered.resize(numberOfColumns); columnsCovered.assignToAll(0);
 
 	for (unsigned i = 0; i < numberOfRows; i++) {
 		for (unsigned j = 0; j < numberOfColumns; j++) {
-			if ( pCond(i, j) == 0 && !rowsCovered[i] && !columnsCovered[j] ) {
+			if ( pCond(i, j) == 0 && rowsCovered[i] == 0 && columnsCovered[j] == 0 ) {
 				mask(i, j) = 1;
-				rowsCovered[i] = true;
-				columnsCovered[j] = true;
+				rowsCovered[i] = 1;
+				columnsCovered[j] = 1;
 			} // if
 		} // for
 	} // for
 
-	return mask;
+	rowsCovered.assignToAll(0);
+	columnsCovered.assignToAll(0);
+
+	*stepNumber = 3;
 } // stepTwo()
 
-ColVector<unsigned> stepThree(Matrix<unsigned> mask, unsigned *stepNumber) {
+void hungarianStepThree(Matrix<unsigned> & mask,
+		ColVector<unsigned> & columnsCovered,
+		unsigned *stepNumber) {
 	unsigned numberOfColumns = mask.cols();
-	ColVector<unsigned> columnsCovered(numberOfColumns); columnsCovered.assignToAll(0);
+	columnsCovered.resize(numberOfColumns); columnsCovered.assignToAll(0);
 	unsigned totalSum = 0.0;
 
 	for (unsigned i = 0; i < numberOfColumns; i++) {
@@ -91,14 +90,12 @@ ColVector<unsigned> stepThree(Matrix<unsigned> mask, unsigned *stepNumber) {
 
 	if (totalSum == numberOfColumns) *stepNumber = 7;
 	else *stepNumber = 4;
-
-	return columnsCovered;
 } // stepThree()
 
-Matrix<unsigned> stepFour(Matrix<double> pCond, 
-		Matrix<unsigned> mask, 
-		ColVector<unsigned> rowsCovered,
-		ColVector<unsigned> columnsCovered,
+void hungarianStepFour(Matrix<double> & pCond, 
+		Matrix<unsigned> & mask, 
+		ColVector<unsigned> & rowsCovered,
+		ColVector<unsigned> & columnsCovered,
 		unsigned *stepNumber) {
 
 	unsigned pSize = pCond.cols();
@@ -151,9 +148,7 @@ Matrix<unsigned> stepFour(Matrix<double> pCond,
 				zCol.push_back(col);
 			} // if
 		} // if
-	} // whileI
-
-	return mask;
+	} // while
 } // stepFour()
 
 Matrix<unsigned> stepFive(Matrix<unsigned> mask,
