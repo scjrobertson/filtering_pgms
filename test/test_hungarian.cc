@@ -53,48 +53,100 @@ class HungarianTest : public testing::Test {
 
 TEST_F (HungarianTest, TestStepOne) {
 	unsigned stepNumber = 0;
-	hungarianStepOne(pCond, &stepNumber);
-
-	std::cout << pCond << std::endl;
+	hungarianStepOne(pCond, stepNumber);
 } // TestStepOne
 
 
-TEST_F (HungarianTest, TestStepStepTwo) {	
+TEST_F (HungarianTest, TestStepTwo) {	
 	unsigned stepNumber = 1;
 
 	ColVector<unsigned> rowsCovered = ColVector<unsigned>();
 	ColVector<unsigned> columnsCovered = ColVector<unsigned>();
 	Matrix<unsigned> mask = Matrix<unsigned>();
 
-	hungarianStepOne(pCond, &stepNumber);
-	hungarianStepTwo(pCond, mask, rowsCovered, columnsCovered, &stepNumber);
+	hungarianStepOne(pCond, stepNumber);
+	hungarianStepTwo(pCond, mask, rowsCovered, columnsCovered, stepNumber);
 } // TestStepTwo()
 
 
-TEST_F (HungarianTest, TestStepStepThree) {	
+TEST_F (HungarianTest, TestStepThree) {	
 	unsigned stepNumber = 1;
 
 	ColVector<unsigned> rowsCovered = ColVector<unsigned>();
 	ColVector<unsigned> columnsCovered = ColVector<unsigned>();
 	Matrix<unsigned> mask = Matrix<unsigned>();
 
-	hungarianStepOne(pCond, &stepNumber);
-	hungarianStepTwo(pCond, mask, rowsCovered, columnsCovered, &stepNumber);
-	hungarianStepThree(mask, columnsCovered, &stepNumber);
-
-	std::cout << columnsCovered << std::endl;
+	hungarianStepOne(pCond, stepNumber);
+	hungarianStepTwo(pCond, mask, rowsCovered, columnsCovered, stepNumber);
+	hungarianStepThree(mask, columnsCovered, stepNumber);
 } // TestStepThree()
 
-TEST_F (HungarianTest, TestStepStepFour) {	
+TEST_F (HungarianTest, TestStepFour) {	
 	unsigned stepNumber = 1;
 
 	ColVector<unsigned> rowsCovered = ColVector<unsigned>();
 	ColVector<unsigned> columnsCovered = ColVector<unsigned>();
 	Matrix<unsigned> mask = Matrix<unsigned>();
+	std::map<unsigned, unsigned> zRow, zCol;
 
-	hungarianStepOne(pCond, &stepNumber);
-	hungarianStepTwo(pCond, mask, rowsCovered, columnsCovered, &stepNumber);
-	hungarianStepThree(mask, columnsCovered, &stepNumber);
-
-	std::cout << columnsCovered << std::endl;
+	hungarianStepOne(pCond, stepNumber);
+	hungarianStepTwo(pCond, mask, rowsCovered, columnsCovered, stepNumber);
+	hungarianStepThree(mask, columnsCovered, stepNumber);
+	hungarianStepFour(pCond, mask, rowsCovered, columnsCovered, zRow, zCol, stepNumber);
 } // TestStepFour()
+
+TEST_F (HungarianTest, TestStepSix) {	
+	unsigned stepNumber = 1;
+
+	ColVector<unsigned> rowsCovered = ColVector<unsigned>();
+	ColVector<unsigned> columnsCovered = ColVector<unsigned>();
+	Matrix<unsigned> mask = Matrix<unsigned>();
+	std::map<unsigned, unsigned> zRow, zCol;
+
+	hungarianStepOne(pCond, stepNumber);
+	hungarianStepTwo(pCond, mask, rowsCovered, columnsCovered, stepNumber);
+	hungarianStepThree(mask, columnsCovered, stepNumber);
+	hungarianStepFour(pCond, mask, rowsCovered, columnsCovered, zRow, zCol, stepNumber);	
+	hungarianStepSix(pCond, rowsCovered, columnsCovered, stepNumber);
+} // TestStepSix()
+
+
+TEST_F (HungarianTest, TestStepFourAgain) {	
+	unsigned stepNumber = 1;
+
+	ColVector<unsigned> rowsCovered = ColVector<unsigned>();
+	ColVector<unsigned> columnsCovered = ColVector<unsigned>();
+	Matrix<unsigned> mask = Matrix<unsigned>();
+	std::map<unsigned, unsigned> zRow, zCol;
+
+	hungarianStepOne(pCond, stepNumber);
+	hungarianStepTwo(pCond, mask, rowsCovered, columnsCovered, stepNumber);
+	hungarianStepThree(mask, columnsCovered, stepNumber);
+	hungarianStepFour(pCond, mask, rowsCovered, columnsCovered, zRow, zCol, stepNumber);	
+	hungarianStepSix(pCond, rowsCovered, columnsCovered, stepNumber);
+	hungarianStepFour(pCond, mask, rowsCovered, columnsCovered, zRow, zCol, stepNumber);	
+} // TestStepFourAgain()
+
+TEST_F (HungarianTest, TestStepFive) {	
+	unsigned stepNumber = 1;
+
+	ColVector<unsigned> rowsCovered = ColVector<unsigned>();
+	ColVector<unsigned> columnsCovered = ColVector<unsigned>();
+	Matrix<unsigned> mask = Matrix<unsigned>();
+	std::map<unsigned, unsigned> zRow, zCol;
+
+	hungarianStepOne(pCond, stepNumber);
+	hungarianStepTwo(pCond, mask, rowsCovered, columnsCovered, stepNumber);
+	hungarianStepThree(mask, columnsCovered, stepNumber);
+	hungarianStepFour(pCond, mask, rowsCovered, columnsCovered, zRow, zCol, stepNumber);	
+	hungarianStepSix(pCond, rowsCovered, columnsCovered, stepNumber);
+	hungarianStepFour(pCond, mask, rowsCovered, columnsCovered, zRow, zCol, stepNumber);	
+	hungarianStepFive(mask, rowsCovered, columnsCovered, zRow, zCol, stepNumber);
+} // TestStepFive()
+
+
+TEST_F (HungarianTest, TestAlgorithm) {	
+	double assignmentCost = hungarianCost(perf);
+
+	std::cout << assignmentCost << std::endl;
+} // TestAlgorithm()
