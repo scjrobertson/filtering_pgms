@@ -30,7 +30,7 @@ ColVector<double> calculateOspa(std::vector<rcptr<filters::gmm>> rhs,
 			double distance = cParameter;
 
 			if (numberOfLhsComponents == 1 && numberOfRhsComponents == 1) {
-				distance = gaussianHellingerDistance(rhs[i]->mu[0], lhs[j]->mu[0], rhs[i]->S[0], lhs[j]->S[0]);
+				distance = 0.0; //gaussianHellingerDistance(rhs[i]->mu[0], lhs[j]->mu[0], rhs[i]->S[0], lhs[j]->S[0]);
 			} // if
 
 			distanceMatrix(i, j) = pow(std::min(distance, cParameter), pParameter);
@@ -42,24 +42,3 @@ ColVector<double> calculateOspa(std::vector<rcptr<filters::gmm>> rhs,
 
 	return ospaComponents;
 } // calculateOspa()
-
-double gaussianHellingerDistance (ColVector<double> muOne,
-		ColVector<double> muTwo,
-		Matrix<double> SOne,
-		Matrix<double> STwo) {
-
-	unsigned dimension = SOne.cols();
-	ColVector<double> mu = muOne - muTwo;
-	Matrix<double> S = SOne + STwo;
-
-	double detP; int fail;
-	Matrix<double> P = inv(S, detP, fail);
-
-	double detSOne = det(SOne, fail);
-	double detSTwo = det(STwo, fail);
-
-	double delta = sqrt( (sqrt(detSOne*detSTwo)*detP)/pow(0.5, dimension) );
-	double epsilon = exp( -0.25*(mu.transpose())*P*(mu)   );
-
-	return 1 - delta*epsilon;
-} // gaussianHellinger

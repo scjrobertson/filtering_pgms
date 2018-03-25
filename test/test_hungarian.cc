@@ -3,7 +3,7 @@
  *  Execution: ./run_main.sh
  *  Dependencies: None
  *
- * Google Test fixture for the loop assocation tests
+ * Google Test fixture for the Hungarian algorithm
  *************************************************************************/
 #include <iostream>
 #include <algorithm>
