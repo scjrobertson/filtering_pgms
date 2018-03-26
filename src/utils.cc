@@ -17,9 +17,6 @@ rcptr<filters::gmm> weakMarginalisation(rcptr<filters::gmm> gmm) {
 	// Compute the mached mean
 	for (unsigned i = 0; i < numberOfComponents; i++) {
 		normalisedWeight[i] = (gmm->w[i])/w;
-
-		//std::cout << "w[" << i << "]: " << gmm->w[i] << std::endl;
-		//std::cout << "mu[" << i << "]: " << gmm->mu[i] << std::endl;
 		mu += normalisedWeight[i]*(gmm->mu[i]);
 	} // for
 	//std::cout << "mu: " << mu << std::endl;
@@ -27,7 +24,6 @@ rcptr<filters::gmm> weakMarginalisation(rcptr<filters::gmm> gmm) {
 	// Compute the matched covariance
 	for (unsigned i = 0; i < numberOfComponents; i++) {
 		ColVector<double> difference = (gmm->mu[i]) - mu;
-		//std::cout << "S[" << i << "]: " << gmm->S[i] << std::endl;
 		S += normalisedWeight[i]*( (gmm->S[i]) + (difference)*(difference.transpose()) );
 	} // for
 	//std::cout << "S: " << S << std::endl;
@@ -63,6 +59,7 @@ rcptr<filters::gmm> gaussianMixturePruning(rcptr<filters::gmm> gmm,
 			prunedS.push_back(1.0*gmm->S[i]);
 		} // if
 	} // for
+
 	// Merge closely spaced components
 	std::vector<double> mergedW; mergedW.clear();
 	std::vector<ColVector<double>> mergedMu; mergedMu.clear();
@@ -72,10 +69,15 @@ rcptr<filters::gmm> gaussianMixturePruning(rcptr<filters::gmm> gmm,
 	while(numberOfRemainingComponents != 0) {
 		std::vector<unsigned> mergedIndices; mergedIndices.clear();
 		// Get biggest component
- 		double maxWeight = std::numeric_limits<double>::infinity();
+ 		double maxWeight = -1;
 		unsigned maxIndex = -1;
-		for (unsigned i = 0; i < numberOfRemainingComponents; i++) std::max(maxWeight, prunedW[i]);
-		for (unsigned i = 0; i < numberOfRemainingComponents; i++) if (prunedW[i] == maxWeight) maxIndex = i;
+		for (unsigned i = 0; i < numberOfRemainingComponents; i++) maxWeight = std::max(maxWeight, prunedW[i]);
+		for (unsigned i = 0; i < numberOfRemainingComponents; i++) {
+			if (prunedW[i] == maxWeight) {
+				maxIndex = i;
+				break;
+			} // if
+		} // for
 		// Merge closely spaced components
 		double w = 0;
 		ColVector<double> mu = ColVector<double>(dimension);
@@ -105,9 +107,16 @@ rcptr<filters::gmm> gaussianMixturePruning(rcptr<filters::gmm> gmm,
 		std::vector<ColVector<double>> tempMu; tempMu.clear();
 		std::vector<Matrix<double>> tempS; tempS.clear();
 
+		//std::cout << "mergedIndices: " << mergedIndices << "\n" << std::endl;
+
 		for (unsigned i = 0; i < numberOfRemainingComponents; i++) {
 			bool merged = false;
-			for (unsigned j = 0; j < numberOfMergedComponents; j++) if (i == mergedIndices[j]) merged = true;
+			for (unsigned j = 0; j < numberOfMergedComponents; j++) {
+				if (i == mergedIndices[j]) {
+					merged = true;
+					break;
+				} // if
+			} // for
 			if (!merged) {
 				tempW.push_back(prunedW[i]);
 				tempMu.push_back(1.0*prunedMu[i]);
@@ -125,8 +134,32 @@ rcptr<filters::gmm> gaussianMixturePruning(rcptr<filters::gmm> gmm,
 		} // for
 	} // while
 	
-
 	rcptr<filters::gmm> prunedAndMergedGaussianMixture = uniqptr<filters::gmm>(new filters::gmm);
+
+	unsigned numberOfMergedComponents = mergedW.size();
+	if ( numberOfMergedComponents > maximumNumberOfMixtureComponents ) {
+		// Cap the total number of mixands
+		std::vector<double> tempW; tempW.clear();
+		std::vector<ColVector<double>> tempMu; tempMu.clear();
+		std::vector<Matrix<double>> tempS; tempS.clear();
+
+		std::vector<size_t> sortedIndices = sortIndices(mergedW, std::greater<double>());
+
+		for (unsigned i = 0; i < maximumNumberOfMixtureComponents; i++) {
+			tempW.push_back(mergedW[sortedIndices[i]]);
+			tempMu.push_back(mergedMu[sortedIndices[i]]);
+			tempS.push_back(mergedS[sortedIndices[i]]);
+		} // for
+
+		// Reassign
+		(prunedAndMergedGaussianMixture->w) = tempW; (prunedAndMergedGaussianMixture->mu) = tempMu; 
+		(prunedAndMergedGaussianMixture->S) = tempS;
+		
+	} else {
+		(prunedAndMergedGaussianMixture->w) = mergedW; (prunedAndMergedGaussianMixture->mu) = mergedMu; 
+		(prunedAndMergedGaussianMixture->S) = mergedS;
+	} // if
+
 	return prunedAndMergedGaussianMixture;
 } // gaussianMixturePruning()
 

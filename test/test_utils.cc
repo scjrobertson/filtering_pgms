@@ -7,9 +7,11 @@
  *************************************************************************/
 #include <iostream>
 #include <algorithm>
+#include <limits>
 #include "gtest/gtest.h"
 #include "genvec.hpp"
 #include "genmat.hpp"
+#include "sortindices.hpp"
 #include "system_constants.hpp"
 #include "utils.hpp"
 
@@ -92,7 +94,7 @@ class UtilsTest : public testing::Test {
 			(f2->S[2])(2, 2) = 0.7804; (f2->S[2])(3, 3) = 0.4367;
 
 			weightThreshold = 1e-15;
-			unionDistance = 4.0;
+			unionDistance = std::numeric_limits<double>::infinity();
 			maximumNumberOfComponents = 1;
 		}
 
@@ -104,9 +106,19 @@ class UtilsTest : public testing::Test {
 		unsigned maximumNumberOfComponents;
 }; // UtilsTest
 
-TEST_F (UtilsTest, TestGMMPruning) {
-	
-	rcptr<filters::gmm> prunedGaussianMixture = gaussianMixturePruning(f1, weightThreshold, unionDistance, maximumNumberOfComponents);
+TEST_F (UtilsTest, TestGMMPruningInfinite) {
+	double componentUnionDistance = 0.5;
+
+	rcptr<filters::gmm> prunedGaussianMixture = gaussianMixturePruning(f1, weightThreshold, componentUnionDistance, maximumNumberOfComponents);
 	rcptr<filters::gmm> weakMarginal = weakMarginalisation(f1);
 
+	std::cout << "prunedGaussianMixture: " << std::endl;
+	std::cout << (prunedGaussianMixture->w[0]) << std::endl;
+	std::cout << (prunedGaussianMixture->mu[0]) << std::endl;
+	std::cout << (prunedGaussianMixture->S[0]) << std::endl;
+
+	std::cout << "WeakMarginal: " << std::endl;
+	std::cout << (weakMarginal->w[0]) << std::endl;
+	std::cout << (weakMarginal->mu[0]) << std::endl;
+	std::cout << (weakMarginal->S[0]) << std::endl;
 } // TestGMMPruning()

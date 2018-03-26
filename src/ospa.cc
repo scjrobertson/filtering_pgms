@@ -2,6 +2,7 @@
 #include <algorithm>
 #include "ospa.hpp"
 #include "hungarian.hpp"
+#include "hellinger.hpp"
 
 
 ColVector<double> calculateOspa(std::vector<rcptr<filters::gmm>> rhs,
@@ -24,21 +25,18 @@ ColVector<double> calculateOspa(std::vector<rcptr<filters::gmm>> rhs,
 	Matrix<double> distanceMatrix = gLinear::zeros<double>(rhsSize, lhsSize);
 
 	for (unsigned i = 0; i < rhsSize; i++) {
-		unsigned numberOfRhsComponents = (rhs[i]->w).size();
 		for (unsigned j = 0; j < lhsSize; j++) {
-			unsigned numberOfLhsComponents = (lhs[i]->w).size();
-			double distance = cParameter;
-
-			if (numberOfLhsComponents == 1 && numberOfRhsComponents == 1) {
-				distance = 0.0; //gaussianHellingerDistance(rhs[i]->mu[0], lhs[j]->mu[0], rhs[i]->S[0], lhs[j]->S[0]);
-			} // if
-
+			double distance = gaussianMixtureHellingerDistance(rhs[i]->w, rhs[i]->mu, rhs[i]->S, lhs[j]->w, lhs[j]->mu, lhs[j]->S);
 			distanceMatrix(i, j) = pow(std::min(distance, cParameter), pParameter);
 		} // for
 	} // for
 
 	double minimumCost = hungarianCost(distanceMatrix);
 
+	unsigned maxSize = std::max(rhsSize, lhsSize);
+	ospaComponents[0] = pow((1.0/maxSize)*( pow(cParameter, pParameter)*abs(rhsSize-lhsSize) + minimumCost), 1.0/pParameter );
+	ospaComponents[1] = pow((1.0/maxSize)*(minimumCost), 1.0/pParameter );
+	ospaComponents[0] = pow((1.0/maxSize)*(pow(cParameter, pParameter)*abs(rhsSize-lhsSize)), 1.0/pParameter );
 
 	return ospaComponents;
 } // calculateOspa()
