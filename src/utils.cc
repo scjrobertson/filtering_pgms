@@ -1,4 +1,6 @@
 #include "utils.hpp"
+#include <iostream>
+#include <fstream>
 #include <limits>
 #include <algorithm>
 
@@ -178,4 +180,64 @@ bool haveIntersectingDomains(std::vector<unsigned short> a, std::vector<unsigned
 	} // for
 
 	return doIntersect;
-} // for
+} // haveIntersectingDomains
+
+void outputResults(std::vector<std::vector<ColVector<double>>> groundTruth,
+		std::vector<std::vector<rcptr<filters::gmm>>> stateEstimates,
+		std::vector<ColVector<double>> ospa) {
+	
+	
+	unsigned dimension = groundTruth[0][0].size() - 1;
+
+	// Write out ground truth
+	std::ofstream groundTruthFile;
+	groundTruthFile.open("simpleGroundTruth.ini");
+
+	unsigned numberOfTrajectories = groundTruth.size();
+	for (unsigned i = 0; i < numberOfTrajectories; i++) {
+		unsigned trajectoryLength = groundTruth[i].size();
+		
+		groundTruthFile << "[TRAJECTORY " << i+1 << "]\n";
+		for (unsigned j = 0; j < trajectoryLength; j++) {
+			for (unsigned k = 0; k < dimension+1; k++) groundTruthFile << groundTruth[i][j][k] << ",";
+			groundTruthFile << "\n";
+		} // for
+		groundTruthFile << "\n";
+	} // for
+	groundTruthFile.close();
+
+	// Write out state estimates
+	std::ofstream stateEstimateFile;
+	stateEstimateFile.open("simpleStateEstimates.ini");
+
+	stateEstimateFile << "[DIMENSION]\n";
+	stateEstimateFile << "dimension =" << dimension << "\n";
+
+	unsigned simulationLength = stateEstimates.size();
+	stateEstimateFile << "[STATE ESTIMATES]\n";
+	for (unsigned i = 0; i < simulationLength; i++) {
+		unsigned targetNumber = stateEstimates[i].size();
+		for (unsigned j = 0; j < targetNumber; j++) {
+			stateEstimateFile << i << ", ";
+			unsigned numberOfGmmComponents = stateEstimates[i][j]->w.size();
+			for (unsigned k = 0; k < numberOfGmmComponents; k++) {
+				for (unsigned l = 0; l < dimension; l++) stateEstimateFile << stateEstimates[i][j]->mu[k][l] << ", ";
+			} // for
+			stateEstimateFile << "\n";
+		} // for
+	} // for
+	stateEstimateFile.close();
+
+	// Write out state estimates
+	std::ofstream ospaFile;
+	ospaFile.open("simpleOspaResults.ini");
+
+	ospaFile << "[OSPA RESULTS]\n";
+	for (unsigned i = 0; i < simulationLength; i++) {
+		ospaFile << i << ", ";
+		for (unsigned j = 0; j < dimension; j++) ospaFile << ospa[i][j] << ", ";
+		ospaFile << "\n";
+	} // for
+	ospaFile.close();
+
+} // outputResults

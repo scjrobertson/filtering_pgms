@@ -93,16 +93,16 @@ LinearModel::LinearModel() {
 
 	observationSpaceVolume = 1e4;
 
-	lambda = 2;
+	lambda = 60;
 
 	// Gaussian mixture pruning parameters
 	gmmComponentWeightThreshold = 1e-15;
 	gmmComponentUnionDistance = std::numeric_limits<double>::infinity();
-	maximumNumberOfGmmComponents = 250;
+	maximumNumberOfGmmComponents = 3;
 
 	// OSPA parameters
 	ospaP = 2;
-	ospaC = 5;
+	ospaC = 1;
 
 	this->generateGroundTruth();
 } // Constructor()
@@ -191,6 +191,35 @@ void LinearModel::generateGroundTruth() {
 		cardinality[i] = (this->beliefs[i]).size();
 	} // for
 } // generateGroundTruth()
+
+
+std::vector<std::vector<ColVector<double>>> LinearModel::getIndividualGroundTruthTrajectories() const {
+	unsigned numberOfTrajectories = targetPriors.size();
+	std::vector<std::vector<ColVector<double>>> individualTrajectories(numberOfTrajectories);
+
+	for (unsigned i = 0; i < numberOfTrajectories; i++) {
+		unsigned trajectoryLength = deathTimes[i] - birthTimes[i];
+		std::vector<ColVector<double>> trajectory(trajectoryLength);
+		std::vector<ColVector<double>> exportTrajectory(trajectoryLength);
+		
+		// Initial position and time
+		exportTrajectory[0] = ColVector<double>(xDimension+1); exportTrajectory[0].assignToAll(0.0);
+		exportTrajectory[0][0] = birthTimes[i];
+		trajectory[0] = 1.0*targetPriors[i]->mu[0];
+		for (unsigned j = 0; j < xDimension; j++) exportTrajectory[0][j+1] = trajectory[0][j];
+
+		for (unsigned j = 1; j < trajectoryLength; j++) {
+			exportTrajectory[j] = ColVector<double>(xDimension+1); exportTrajectory[j].assignToAll(0.0);
+			exportTrajectory[j][0] = birthTimes[i] + j;
+
+			trajectory[j] = A*trajectory[j-1] + u;
+			for (unsigned k = 0; k < xDimension; k++) exportTrajectory[j][k+1] = trajectory[j][k];			
+		} // for
+		individualTrajectories[i] = exportTrajectory;
+	} // for
+
+	return individualTrajectories;	
+} // getGroundTruth()
 
 
 std::vector<std::vector<ColVector<double>>> LinearModel::getGroundTruth() const {

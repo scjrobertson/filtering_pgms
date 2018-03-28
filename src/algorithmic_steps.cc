@@ -35,7 +35,7 @@ std::vector<std::vector<rcptr<filters::gmm>>> runLinearGaussianFilter(rcptr<Line
 		Matrix<double> updatedAssociations = loopyBeliefUpdatePropagation(model, associationMatrix);
 
 		// Measurement Updates
-		targets[i] = updateTargetStatesLinear(updateOptions, associationMatrix, updatedAssociations);
+		targets[i] = updateTargetStatesLinear(model, updateOptions, associationMatrix, updatedAssociations);
 
 		// Add in new targets
 		targetPriors =  model->getPriors(i); numberOfNewTargets = targetPriors.size();
@@ -342,7 +342,8 @@ Matrix<double> loopyBeliefUpdatePropagation (rcptr<LinearModel> linearModel,
 	return updatedAssociations;
 } // loopyBeliefUpdatePropagation()
 
-std::vector<rcptr<filters::gmm>> updateTargetStatesLinear(std::vector<std::vector<rcptr<filters::gmm>>> updateOptions,
+std::vector<rcptr<filters::gmm>> updateTargetStatesLinear(rcptr<LinearModel> model,
+		std::vector<std::vector<rcptr<filters::gmm>>> updateOptions,
 		Matrix<double> associationMatrix,
 		Matrix<double> updatedAssociations) {
 
@@ -368,6 +369,9 @@ std::vector<rcptr<filters::gmm>> updateTargetStatesLinear(std::vector<std::vecto
 			} // if
 		} // for
 		updatedTargets[i] = weakMarginalisation(gmm);
+			//gaussianMixturePruning(gmm, model->gmmComponentWeightThreshold, 
+			//model->gmmComponentUnionDistance, 
+			//model->maximumNumberOfGmmComponents);   //weakMarginalisation(gmm);
 	} // for
 
 	return updatedTargets;

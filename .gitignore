@@ -6,3 +6,5 @@ build
 *.hpp~
 *.swp
 *.sh~
+*.ini
+*.csv

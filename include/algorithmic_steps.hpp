@@ -26,7 +26,8 @@ Matrix<double> createAssociationMatrix(rcptr<LinearModel> model,
 Matrix<double> loopyBeliefUpdatePropagation(rcptr<LinearModel> model,
 		Matrix<double> associationMatrix);
 
-std::vector<rcptr<filters::gmm>> updateTargetStatesLinear(std::vector<std::vector<rcptr<filters::gmm>>> updateOptions,
+std::vector<rcptr<filters::gmm>> updateTargetStatesLinear(rcptr<LinearModel> model,
+		std::vector<std::vector<rcptr<filters::gmm>>> updateOptions,
 		Matrix<double> associationMatrix,
 		Matrix<double> updatedAssociations);
 

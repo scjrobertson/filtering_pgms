@@ -60,6 +60,7 @@ class LinearModel {
 		void generateGroundTruth();
 
 	public:
+		std::vector<std::vector<ColVector<double>>> getIndividualGroundTruthTrajectories() const;
 		std::vector<std::vector<ColVector<double>>> getGroundTruth() const;
 		std::vector<std::vector<rcptr<filters::gmm>>> getGroundTruthBeliefs() const;
 		std::vector<std::vector<ColVector<double>>> getMeasurements() const;

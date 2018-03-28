@@ -4,9 +4,26 @@
 #include "hungarian.hpp"
 #include "hellinger.hpp"
 
+std::vector<ColVector<double>> calculateOspa(rcptr<LinearModel> model,
+		std::vector<std::vector<rcptr<filters::gmm>>> & lhs,
+		std::vector<std::vector<rcptr<filters::gmm>>>  & rhs) {
 
-ColVector<double> calculateOspa(std::vector<rcptr<filters::gmm>> rhs,
-		std::vector<rcptr<filters::gmm>> lhs, 
+
+	unsigned rhsSize = rhs.size();
+	unsigned lhsSize = lhs.size();
+	unsigned ospaLength = std::max(lhs.size(), rhs.size());
+	std::vector<ColVector<double>> ospa(ospaLength);
+
+	for (unsigned i = lhsSize; i < ospaLength; i++) lhs.push_back( std::vector<rcptr<filters::gmm>>() );
+	for (unsigned i = rhsSize; i < ospaLength; i++) rhs.push_back( std::vector<rcptr<filters::gmm>>() );
+	for (unsigned i = 0; i < ospaLength; i++) ospa[i] = calculateOspa(lhs[i], rhs[i], model->ospaC, model->ospaP);
+
+
+	return ospa;
+} //  calculateOspa
+
+ColVector<double> calculateOspa(std::vector<rcptr<filters::gmm>> lhs,
+		std::vector<rcptr<filters::gmm>> rhs, 
 		double cParameter,
 		double pParameter) {
 	ColVector<double> ospaComponents = ColVector<double>(3); ospaComponents.assignToAll(0.0);
@@ -36,7 +53,7 @@ ColVector<double> calculateOspa(std::vector<rcptr<filters::gmm>> rhs,
 	unsigned maxSize = std::max(rhsSize, lhsSize);
 	ospaComponents[0] = pow((1.0/maxSize)*( pow(cParameter, pParameter)*abs(rhsSize-lhsSize) + minimumCost), 1.0/pParameter );
 	ospaComponents[1] = pow((1.0/maxSize)*(minimumCost), 1.0/pParameter );
-	ospaComponents[0] = pow((1.0/maxSize)*(pow(cParameter, pParameter)*abs(rhsSize-lhsSize)), 1.0/pParameter );
+	ospaComponents[2] = pow((1.0/maxSize)*(pow(cParameter, pParameter)*abs(rhsSize-lhsSize)), 1.0/pParameter );
 
 	return ospaComponents;
 } // calculateOspa()
