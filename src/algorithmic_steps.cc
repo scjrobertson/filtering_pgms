@@ -7,6 +7,7 @@
 #include "clustergraph.hpp"
 #include "lbp_cg.hpp"
 #include "lbu_cg.hpp"
+#include "ospa.hpp"
 
 rcptr<FactorOperator> defaultInplaceNormalizer = uniqptr<FactorOperator>(new DiscreteTable_InplaceNormalize<unsigned short>);
 rcptr<FactorOperator> defaultNormalizer = uniqptr<FactorOperator>(new DiscreteTable_Normalize<unsigned short>);
@@ -15,6 +16,8 @@ rcptr<FactorOperator> defaultMarginalizer = uniqptr<FactorOperator>(new Discrete
 std::vector<std::vector<rcptr<filters::gmm>>> runLinearGaussianFilter(rcptr<LinearModel> model) {
 	std::vector<std::vector<rcptr<filters::gmm>>> targets; targets.clear(); targets.resize(model->simulationLength);
 	std::vector<std::vector<ColVector<double>>> measurements = model->getMeasurements();
+	std::vector<std::vector<rcptr<filters::gmm>>> groundTruthBeliefs = model->getGroundTruthBeliefs();
+	std::vector<unsigned> cardinality = model->getCardinality();
 
 	// Add target prior for t=0
 	std::vector<rcptr<filters::gmm>> targetPriors =  model->getPriors(0);	
@@ -22,7 +25,7 @@ std::vector<std::vector<rcptr<filters::gmm>>> runLinearGaussianFilter(rcptr<Line
 	for (unsigned j = 0; j < numberOfNewTargets; j++) targets[0].push_back(targetPriors[j]);
 
 	for (unsigned i = 1; i < model->simulationLength; i++) {
-		//std::cout << "\nTime-step " << i << "." << std::endl;
+		std::cout << "\nTime-step " << i << "." << std::endl;
 
 		// Prediction
 		std::vector<rcptr<filters::gmm>> predictedStates = predictMultipleTargetsLinear(model, targets[i-1]);	
@@ -41,6 +44,12 @@ std::vector<std::vector<rcptr<filters::gmm>>> runLinearGaussianFilter(rcptr<Line
 		targetPriors =  model->getPriors(i); numberOfNewTargets = targetPriors.size();
 		for (unsigned j = 0; j < numberOfNewTargets; j++) targets[i].push_back(targetPriors[j]);
 	} // for
+
+	// Calculate the OSPA
+	std::vector<ColVector<double>> ospa = calculateOspa(model, groundTruthBeliefs, targets);
+
+	// Output results
+	outputResults(model, model->getIndividualGroundTruthTrajectories(), measurements, targets, ospa, cardinality);
 
 	return targets;
 } // runLinearGaussianFilter()
@@ -349,9 +358,8 @@ std::vector<rcptr<filters::gmm>> updateTargetStatesLinear(rcptr<LinearModel> mod
 
 	unsigned numberOfTargets = associationMatrix.rows();
 	unsigned numberOfUpdateOptions = associationMatrix.cols();
-
 	std::vector<rcptr<filters::gmm>> updatedTargets(numberOfTargets);
-
+	
 	for (unsigned i = 0; i < numberOfTargets; i++) {
 		rcptr<filters::gmm> gmm = uniqptr<filters::gmm>(new filters::gmm);
 		(gmm->w).clear(); (gmm->mu).clear(); (gmm->S).clear();
@@ -368,10 +376,11 @@ std::vector<rcptr<filters::gmm>> updateTargetStatesLinear(rcptr<LinearModel> mod
 				} // for
 			} // if
 		} // for
-		updatedTargets[i] = weakMarginalisation(gmm);
-			//gaussianMixturePruning(gmm, model->gmmComponentWeightThreshold, 
-			//model->gmmComponentUnionDistance, 
-			//model->maximumNumberOfGmmComponents);   //weakMarginalisation(gmm);
+		//updatedTargets[i] = weakMarginalisation(gmm);
+		updatedTargets[i] = gaussianMixturePruning(gmm, 
+				model->gmmComponentWeightThreshold, 
+				model->gmmComponentUnionDistance, 
+				model->maximumNumberOfGmmComponents);   //weakMarginalisation(gmm);
 	} // for
 
 	return updatedTargets;

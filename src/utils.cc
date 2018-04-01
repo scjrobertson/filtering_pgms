@@ -45,6 +45,7 @@ rcptr<filters::gmm> gaussianMixturePruning(rcptr<filters::gmm> gmm,
 		double componentUnionDistance,
 		unsigned maximumNumberOfMixtureComponents) {
 	unsigned numberOfComponents = gmm->w.size();
+
 	if (numberOfComponents == 0) return gmm;
 
 	unsigned dimension = (gmm->mu[0]).size();
@@ -56,9 +57,10 @@ rcptr<filters::gmm> gaussianMixturePruning(rcptr<filters::gmm> gmm,
 
 	for (unsigned i = 0; i < numberOfComponents; i++) {
 		if (gmm->w[i] >= componentWeightThreshold) {
-			prunedW.push_back(gmm->w[i]);
-			prunedMu.push_back(1.0*gmm->mu[i]);
-			prunedS.push_back(1.0*gmm->S[i]);
+			prunedW.push_back(gmm->w[i]); //std::cout << "w: " << gmm->w[i] << std::endl;
+			prunedMu.push_back(1.0*gmm->mu[i]); //std::cout << "mu: " <<  gmm->mu[i] << std::endl;
+			prunedS.push_back(1.0*gmm->S[i]); //std::cout << "S: " << gmm->S[i] << std::endl;
+		} else {
 		} // if
 	} // for
 
@@ -82,7 +84,7 @@ rcptr<filters::gmm> gaussianMixturePruning(rcptr<filters::gmm> gmm,
 		} // for
 		// Merge closely spaced components
 		double w = 0;
-		ColVector<double> mu = ColVector<double>(dimension);
+		ColVector<double> mu = ColVector<double>(dimension); mu.assignToAll(0.0);
 		Matrix<double> S = gLinear::zeros<double>(dimension, dimension);
 
 		double det; int fail;
@@ -99,10 +101,12 @@ rcptr<filters::gmm> gaussianMixturePruning(rcptr<filters::gmm> gmm,
 				mergedIndices.push_back(i);
 			} // if
 		} // for
+
 		// Adjust for the weights
 		mergedW.push_back(w);
 		mergedMu.push_back(mu/w);
 		mergedS.push_back(S/w);
+
 		// Re-allocate
 		unsigned numberOfMergedComponents = mergedIndices.size();
 		std::vector<double> tempW; tempW.clear();
@@ -162,6 +166,8 @@ rcptr<filters::gmm> gaussianMixturePruning(rcptr<filters::gmm> gmm,
 		(prunedAndMergedGaussianMixture->S) = mergedS;
 	} // if
 
+	std::cout << "numberOfComponents: " << prunedAndMergedGaussianMixture->w.size() << std::endl;
+
 	return prunedAndMergedGaussianMixture;
 } // gaussianMixturePruning()
 
@@ -182,46 +188,80 @@ bool haveIntersectingDomains(std::vector<unsigned short> a, std::vector<unsigned
 	return doIntersect;
 } // haveIntersectingDomains
 
-void outputResults(std::vector<std::vector<ColVector<double>>> groundTruth,
+void outputResults(rcptr<LinearModel> model,
+		std::vector<std::vector<ColVector<double>>> groundTruth,
+		std::vector<std::vector<ColVector<double>>> measurements,
 		std::vector<std::vector<rcptr<filters::gmm>>> stateEstimates,
-		std::vector<ColVector<double>> ospa) {
+		std::vector<ColVector<double>> ospa,
+		std::vector<unsigned> cardinality) {
 	
-	
-	unsigned dimension = groundTruth[0][0].size() - 1;
+	unsigned xDimension = model->xDimension;
+	unsigned zDimension = model->zDimension;
+	unsigned lengthOfSimulation = measurements.size();
+	Matrix<double> C = 1.0*model->C;
 
 	// Write out ground truth
 	std::ofstream groundTruthFile;
-	groundTruthFile.open("simpleGroundTruth.ini");
+	groundTruthFile.open("matlab/data/simpleGroundTruth.ini");
 
 	unsigned numberOfTrajectories = groundTruth.size();
+
+	groundTruthFile << "[SIMULATION INFO]\n";
+	groundTruthFile << "xDimension= " << xDimension << "\n";
+	groundTruthFile << "zDimension= " << zDimension << "\n";
+	groundTruthFile << "simulationLength= " << lengthOfSimulation << "\n";
+	groundTruthFile << "numberOfGroundTruthTrajectories= " << numberOfTrajectories << "\n";
+	groundTruthFile << "observationModel=";
+	for (unsigned i = 0; i < zDimension; i++) {
+		for (unsigned j = 0; j < xDimension; j++) groundTruthFile << C(i, j) << ", ";
+	} // for
+	groundTruthFile << "\n";
+
 	for (unsigned i = 0; i < numberOfTrajectories; i++) {
 		unsigned trajectoryLength = groundTruth[i].size();
 		
 		groundTruthFile << "[TRAJECTORY " << i+1 << "]\n";
+		groundTruthFile << "trajectory =";
 		for (unsigned j = 0; j < trajectoryLength; j++) {
-			for (unsigned k = 0; k < dimension+1; k++) groundTruthFile << groundTruth[i][j][k] << ",";
-			groundTruthFile << "\n";
+			groundTruthFile << groundTruth[i][j][0] << ", ";
+			for (unsigned k = 0; k < xDimension; k++) groundTruthFile << groundTruth[i][j][k+1] << ", ";
 		} // for
 		groundTruthFile << "\n";
 	} // for
 	groundTruthFile.close();
 
+	// Write measurements
+	std::ofstream measurementsFile;
+	measurementsFile.open("matlab/data/simpleMeasurements.ini");
+
+	for (unsigned i = 0; i < lengthOfSimulation; i++) {
+		measurementsFile << "[MEASUREMENTS " << i+1 << "]\n";
+		measurementsFile << "measurments = ";
+		unsigned numberOfMeasurements = measurements[i].size();
+		
+		for (unsigned j = 0; j < numberOfMeasurements; j++) {
+			for (unsigned k = 0; k < zDimension; k++) measurementsFile << measurements[i][j][k] << ", ";
+		} // for
+		measurementsFile << "\n";
+	} // for
+	measurementsFile.close();
+
 	// Write out state estimates
 	std::ofstream stateEstimateFile;
-	stateEstimateFile.open("simpleStateEstimates.ini");
-
-	stateEstimateFile << "[DIMENSION]\n";
-	stateEstimateFile << "dimension =" << dimension << "\n";
-
+	stateEstimateFile.open("matlab/data/simpleStateEstimates.ini");
+	
 	unsigned simulationLength = stateEstimates.size();
-	stateEstimateFile << "[STATE ESTIMATES]\n";
 	for (unsigned i = 0; i < simulationLength; i++) {
 		unsigned targetNumber = stateEstimates[i].size();
+
+		stateEstimateFile << "[STATE ESTIMATES " << i+1 << "]\n";
+		stateEstimateFile << "numberOfTargets = " << targetNumber << "\n";
+
 		for (unsigned j = 0; j < targetNumber; j++) {
-			stateEstimateFile << i << ", ";
+			stateEstimateFile << "target" << j+1 << "= ";
 			unsigned numberOfGmmComponents = stateEstimates[i][j]->w.size();
 			for (unsigned k = 0; k < numberOfGmmComponents; k++) {
-				for (unsigned l = 0; l < dimension; l++) stateEstimateFile << stateEstimates[i][j]->mu[k][l] << ", ";
+				for (unsigned l = 0; l < xDimension; l++) stateEstimateFile << stateEstimates[i][j]->mu[k][l] << ", ";
 			} // for
 			stateEstimateFile << "\n";
 		} // for
@@ -230,13 +270,16 @@ void outputResults(std::vector<std::vector<ColVector<double>>> groundTruth,
 
 	// Write out state estimates
 	std::ofstream ospaFile;
-	ospaFile.open("simpleOspaResults.ini");
+	ospaFile.open("matlab/data/simpleOspaResults.ini");
 
-	ospaFile << "[OSPA RESULTS]\n";
+	ospaFile << "[OSPA]\n";
+	ospaFile << "ospa = ";
 	for (unsigned i = 0; i < simulationLength; i++) {
-		ospaFile << i << ", ";
-		for (unsigned j = 0; j < dimension; j++) ospaFile << ospa[i][j] << ", ";
-		ospaFile << "\n";
+		for (unsigned j = 0; j < 3; j++) ospaFile << ospa[i][j] << ", ";
+	} // for
+	ospaFile << "\ncardinality = ";
+	for (unsigned i = 0; i < simulationLength; i++) {
+		ospaFile << cardinality[i] << ", ";
 	} // for
 	ospaFile.close();
 

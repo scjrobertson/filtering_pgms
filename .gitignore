@@ -8,3 +8,4 @@ build
 *.sh~
 *.ini
 *.csv
+*.m~

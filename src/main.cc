@@ -22,12 +22,7 @@
 int main(int, char *argv[]) {
 	
 	rcptr<LinearModel> model = uniqptr<LinearModel>(new LinearModel());
-	std::vector<std::vector<rcptr<filters::gmm>>> groundTruthBeliefs = model->getGroundTruthBeliefs();
 	std::vector<std::vector<rcptr<filters::gmm>>> stateEstimates = runLinearGaussianFilter(model);
-
-	std::vector<ColVector<double>> ospa = calculateOspa(model, groundTruthBeliefs, stateEstimates);
-	outputResults(model->getIndividualGroundTruthTrajectories(), stateEstimates, ospa);
-
 
 	//std::cout << ospa << std::endl;
 

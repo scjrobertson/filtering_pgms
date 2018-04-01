@@ -64,6 +64,7 @@ class LinearModel {
 		std::vector<std::vector<ColVector<double>>> getGroundTruth() const;
 		std::vector<std::vector<rcptr<filters::gmm>>> getGroundTruthBeliefs() const;
 		std::vector<std::vector<ColVector<double>>> getMeasurements() const;
+		std::vector<unsigned> getCardinality() const;
 
 	public:
 		std::vector<rcptr<filters::gmm>> getPriors(unsigned timeStep) const;

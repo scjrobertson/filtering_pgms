@@ -37,9 +37,9 @@ LinearModel::LinearModel() {
 	simulationLength = 50;
 
 	// Birth locations
-	birthTimes = {0, 10};
-	deathTimes = {100, 150};
-	targetPriors.resize(2);
+	birthTimes = {0};
+	deathTimes = {50};
+	targetPriors.resize(1);
 
 	// Target 1
 	targetPriors[0] = uniqptr<filters::gmm>(new filters::gmm);
@@ -48,8 +48,8 @@ LinearModel::LinearModel() {
 	
 	(targetPriors[0]->mu).resize(1);
 	targetPriors[0]->mu[0] = ColVector<double>(xDimension);
-	targetPriors[0]->mu[0][0] = 5; targetPriors[0]->mu[0][1] = 5;
-	targetPriors[0]->mu[0][2] = 1; targetPriors[0]->mu[0][3] = 1;
+	targetPriors[0]->mu[0][0] = -40; targetPriors[0]->mu[0][1] = 40;
+	targetPriors[0]->mu[0][2] = 1.0; targetPriors[0]->mu[0][3] = -2.0;
 
 	(targetPriors[0]->S).resize(1);
 	targetPriors[0]->S[0] = gLinear::zeros<double>(xDimension, xDimension);
@@ -57,19 +57,21 @@ LinearModel::LinearModel() {
 	targetPriors[0]->S[0](2, 2) = 1.0; targetPriors[0]->S[0](3, 3) = 1.0;
 	
 	// Target 2
+	/*
 	targetPriors[1] = uniqptr<filters::gmm>(new filters::gmm);
 	targetPriors[1]->id = 1;
 	targetPriors[1]->w = {1.0};
 	
 	(targetPriors[1]->mu).resize(1);
 	targetPriors[1]->mu[0] = ColVector<double>(xDimension);
-	targetPriors[1]->mu[0][0] = 5; targetPriors[1]->mu[0][1] = 5;
-	targetPriors[1]->mu[0][2] = 1; targetPriors[1]->mu[0][3] = 1;
+	targetPriors[1]->mu[0][0] = -40.0; targetPriors[1]->mu[0][1] = -40.0;
+	targetPriors[1]->mu[0][2] = 2.0; targetPriors[1]->mu[0][3] = 2.0;
 
 	(targetPriors[1]->S).resize(1);
 	targetPriors[1]->S[0] = gLinear::zeros<double>(xDimension, xDimension);
 	targetPriors[1]->S[0](0, 0) = 1.0; targetPriors[1]->S[0](1, 1) = 1.0;
 	targetPriors[1]->S[0](2, 2) = 1.0; targetPriors[1]->S[0](3, 3) = 1.0;
+	*/
 	
 	// Meaurement model
 	C = gLinear::zeros<double>(zDimension, xDimension);
@@ -86,19 +88,19 @@ LinearModel::LinearModel() {
 	observationSpaceRange.resize(zDimension);
 	
 	observationSpaceRange[0] = ColVector<double>(2);
-	observationSpaceRange[0][0] = -50; observationSpaceRange[0][1] = 50;
+	observationSpaceRange[0][0] = -100; observationSpaceRange[0][1] = 100;
 	
 	observationSpaceRange[1] = ColVector<double>(2);
-	observationSpaceRange[1][0] = -50; observationSpaceRange[1][1] = 50;
+	observationSpaceRange[1][0] = -100; observationSpaceRange[1][1] = 100;
 
 	observationSpaceVolume = 1e4;
 
 	lambda = 60;
 
 	// Gaussian mixture pruning parameters
-	gmmComponentWeightThreshold = 1e-15;
-	gmmComponentUnionDistance = std::numeric_limits<double>::infinity();
-	maximumNumberOfGmmComponents = 3;
+	gmmComponentWeightThreshold = 1e-30;
+	gmmComponentUnionDistance = 4;//std::numeric_limits<double>::infinity();
+	maximumNumberOfGmmComponents = 100;
 
 	// OSPA parameters
 	ospaP = 2;
@@ -129,6 +131,8 @@ void LinearModel::generateGroundTruth() {
 			targetCounter++;
 		} // if
 	} // for
+
+	cardinality[0] = (this->beliefs[0]).size();
 
 	// Declare an identity matrix
 	Matrix<double> identity = gLinear::zeros<double>(xDimension, xDimension);
@@ -213,7 +217,7 @@ std::vector<std::vector<ColVector<double>>> LinearModel::getIndividualGroundTrut
 			exportTrajectory[j][0] = birthTimes[i] + j;
 
 			trajectory[j] = A*trajectory[j-1] + u;
-			for (unsigned k = 0; k < xDimension; k++) exportTrajectory[j][k+1] = trajectory[j][k];			
+			for (unsigned k = 0; k < xDimension; k++) exportTrajectory[j][k+1] = trajectory[j][k];	
 		} // for
 		individualTrajectories[i] = exportTrajectory;
 	} // for
@@ -253,6 +257,10 @@ std::vector<rcptr<filters::gmm>> LinearModel::getPriors(unsigned timeStep) const
 
 	return newTargetPriors;
 } // getPriors()
+
+std::vector<unsigned> LinearModel::getCardinality() const {
+	return cardinality;
+} // getCardinality()
 
 ColVector<double> randomVector(int sizeX, std::default_random_engine generator, double mean, double var){
     ColVector<double> randomVector(sizeX);
