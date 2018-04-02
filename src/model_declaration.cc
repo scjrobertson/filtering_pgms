@@ -99,12 +99,12 @@ LinearModel::LinearModel() {
 
 	// Gaussian mixture pruning parameters
 	gmmComponentWeightThreshold = 1e-30;
-	gmmComponentUnionDistance = 4;//std::numeric_limits<double>::infinity();
-	maximumNumberOfGmmComponents = 100;
+	gmmComponentUnionDistance = 9;//std::numeric_limits<double>::infinity();
+	maximumNumberOfGmmComponents = 3;
 
 	// OSPA parameters
 	ospaP = 2;
-	ospaC = 1;
+	ospaC = 0.25;
 
 	this->generateGroundTruth();
 } // Constructor()

@@ -20,6 +20,8 @@ rcptr<filters::gmm> weakMarginalisation(rcptr<filters::gmm> gmm) {
 	for (unsigned i = 0; i < numberOfComponents; i++) {
 		normalisedWeight[i] = (gmm->w[i])/w;
 		mu += normalisedWeight[i]*(gmm->mu[i]);
+		std::cout << "w[" << i << "]: " << normalisedWeight[i] << std::endl;
+		std::cout << "S[" << i << "]: " << gmm->S[i] << std::endl;
 	} // for
 	//std::cout << "mu: " << mu << std::endl;
 
@@ -28,7 +30,8 @@ rcptr<filters::gmm> weakMarginalisation(rcptr<filters::gmm> gmm) {
 		ColVector<double> difference = (gmm->mu[i]) - mu;
 		S += normalisedWeight[i]*( (gmm->S[i]) + (difference)*(difference.transpose()) );
 	} // for
-	//std::cout << "S: " << S << std::endl;
+	
+	std::cout << "S: " << S << std::endl;
 
 	// Allocate the weak marginal
 	rcptr<filters::gmm> weakMarginal = uniqptr<filters::gmm>(new filters::gmm);
@@ -166,8 +169,6 @@ rcptr<filters::gmm> gaussianMixturePruning(rcptr<filters::gmm> gmm,
 		(prunedAndMergedGaussianMixture->S) = mergedS;
 	} // if
 
-	std::cout << "numberOfComponents: " << prunedAndMergedGaussianMixture->w.size() << std::endl;
-
 	return prunedAndMergedGaussianMixture;
 } // gaussianMixturePruning()
 
@@ -187,6 +188,59 @@ bool haveIntersectingDomains(std::vector<unsigned short> a, std::vector<unsigned
 
 	return doIntersect;
 } // haveIntersectingDomains
+
+Matrix<double> measurementToTargetTransform(Matrix<double> associationMatrix) {
+	unsigned numberOfTargets = associationMatrix.rows();
+	unsigned numberOfMeasurements = associationMatrix.cols()-1; 
+
+	Matrix<double> transformedMatrix = gLinear::zeros<double>(numberOfMeasurements, numberOfTargets+1);
+	
+	// Account for measurement being clutter!
+	for(unsigned i = 0; i < numberOfMeasurements; i++) transformedMatrix(i, 0) = associationMatrix(0, 0);
+
+	// Transpose the remaining enteries
+	for (unsigned i = 0; i < numberOfMeasurements; i++) {
+		for (unsigned j = 1; j < numberOfTargets+1; j++) transformedMatrix(i, j) = associationMatrix(j-1, i+1);
+	} // for
+
+	return transformedMatrix;
+} // measurementToTargetTransform()
+
+rcptr<filters::cfm> convertGmmToCfm( rcptr<filters::gmm> gmm ) {
+	rcptr<filters::cfm> convert = uniqptr<filters::cfm>(new filters::cfm);
+	
+	unsigned numberOfComponents = gmm->w.size();
+	convert->g = std::vector<double>(numberOfComponents);
+	convert->h = std::vector<ColVector<double>>(numberOfComponents);
+	convert->K = std::vector<Matrix<double>>(numberOfComponents);
+
+	for (unsigned i = 0; i < numberOfComponents; i++) {
+		convert->g[i] = log(gmm->w[i]);
+		double det; int fail;
+		convert->K[i] = inv(gmm->S[i], det, fail);
+		convert->h[i] = (convert->K[i])*(gmm->mu[i]);
+	} // for
+
+	return convert;
+} // convertGmmToCfm()
+
+rcptr<filters::gmm> convertCfmToGmm(rcptr<filters::cfm> cfm) {
+	rcptr<filters::gmm> convert = uniqptr<filters::gmm>(new filters::gmm);
+	
+	unsigned numberOfComponents = cfm->g.size();
+	convert->w = std::vector<double>(numberOfComponents);
+	convert->mu = std::vector<ColVector<double>>(numberOfComponents);
+	convert->S = std::vector<Matrix<double>>(numberOfComponents);
+
+	for (unsigned i = 0; i < numberOfComponents; i++) {
+		convert->w[i] = exp(cfm->g[i]);
+		double det; int fail;
+		convert->S[i] = inv(cfm->K[i], det, fail);
+		convert->mu[i] = (convert->S[i])*(cfm->h[i]);
+	} // for
+
+	return convert;
+} // convertGmmToCfm()
 
 void outputResults(rcptr<LinearModel> model,
 		std::vector<std::vector<ColVector<double>>> groundTruth,

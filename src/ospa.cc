@@ -43,6 +43,7 @@ ColVector<double> calculateOspa(std::vector<rcptr<filters::gmm>> lhs,
 
 	for (unsigned i = 0; i < rhsSize; i++) {
 		for (unsigned j = 0; j < lhsSize; j++) {
+			//double distance = gaussianHellingerDistance(rhs[i]->mu[0], rhs[i]->S[0], lhs[i]->mu[0], lhs[i]->S[0]);
 			double distance = gaussianMixtureHellingerDistance(rhs[i]->w, rhs[i]->mu, rhs[i]->S, lhs[j]->w, lhs[j]->mu, lhs[j]->S);
 			distanceMatrix(i, j) = pow(std::min(distance, cParameter), pParameter);
 		} // for

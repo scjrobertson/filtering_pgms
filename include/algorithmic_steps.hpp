@@ -6,6 +6,7 @@
 #include "model_declaration.hpp"
 #include "utils.hpp"
 
+// Standard Filter
 std::vector<std::vector<rcptr<filters::gmm>>> runLinearGaussianFilter(rcptr<LinearModel> model);
 
 std::vector<rcptr<filters::gmm>> predictMultipleTargetsLinear(rcptr<LinearModel> model, 
@@ -29,6 +30,17 @@ Matrix<double> loopyBeliefUpdatePropagation(rcptr<LinearModel> model,
 std::vector<rcptr<filters::gmm>> updateTargetStatesLinear(rcptr<LinearModel> model,
 		std::vector<std::vector<rcptr<filters::gmm>>> updateOptions,
 		Matrix<double> associationMatrix,
+		Matrix<double> updatedAssociations);
+
+// Measurement-to-Target Filter
+std::vector<std::vector<rcptr<filters::gmm>>> runLinearGaussianMTFilter(rcptr<LinearModel> model);
+
+std::vector<rcptr<filters::cfm>> createCanonicalLikelihoods(rcptr<LinearModel> model,
+		std::vector<ColVector<double>> measurements);
+
+std::vector<rcptr<filters::gmm>> updateTargetStatesLinearMT(rcptr<LinearModel> model,
+		std::vector<rcptr<filters::gmm>> predictedStates,
+		std::vector<rcptr<filters::cfm>> likelihoods,
 		Matrix<double> updatedAssociations);
 
 #endif // ALGORITHMIC_STEPS_HPP

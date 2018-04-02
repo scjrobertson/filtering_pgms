@@ -18,6 +18,12 @@ rcptr<filters::gmm> gaussianMixturePruning(rcptr<filters::gmm> gmm,
 bool haveIntersectingDomains(std::vector<unsigned short> a, 
 		std::vector<unsigned short> b);
 
+Matrix<double> measurementToTargetTransform(Matrix<double> associationMatrix);
+
+rcptr<filters::cfm> convertGmmToCfm(rcptr<filters::gmm> gmm);
+
+rcptr<filters::gmm> convertCfmToGmm(rcptr<filters::cfm> cfm);
+
 void outputResults(rcptr<LinearModel> model,
 		std::vector<std::vector<ColVector<double>>> groundTruth,
 		std::vector<std::vector<ColVector<double>>> measurements,

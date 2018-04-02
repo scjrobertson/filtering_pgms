@@ -34,6 +34,13 @@ namespace filters {
 		std::vector<Matrix<double>> S;
 	};
 
+	struct cfm {
+		unsigned id = 0;
+		std::vector<double> g;
+		std::vector<ColVector<double>> h;
+		std::vector<Matrix<double>> K;
+	};
+
 } // namespace
 
 #endif // SYSTEM_CONSTANTS_HPP

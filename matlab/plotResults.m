@@ -108,7 +108,7 @@ localisationLine = line(1:simulationLength, ospa(2, :), 'LineStyle','-','Marker'
 cardinalityLine = line(1:simulationLength, ospa(3, :), 'LineStyle','-','Marker','none','LineWidth',2,'Color',[0 0 1]);
 % Limits
 xlabel('t (s)'); ylabel('OSPA (m)');
-set(gca, 'XLim', [0 simulationLength-1]); set(gca, 'YLim', [0 1.25]);
+set(gca, 'XLim', [0 simulationLength-1]); set(gca, 'YLim', [0 max(ospa(1, :))+0.1]);
 legend([ospaLine, localisationLine, cardinalityLine], 'OSPA', 'Localisation', 'Cardinality');
 %% Plot cardinality vs time
 subplot(212); box on; hold on; grid on;

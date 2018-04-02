@@ -25,7 +25,7 @@ std::vector<std::vector<rcptr<filters::gmm>>> runLinearGaussianFilter(rcptr<Line
 	for (unsigned j = 0; j < numberOfNewTargets; j++) targets[0].push_back(targetPriors[j]);
 
 	for (unsigned i = 1; i < model->simulationLength; i++) {
-		std::cout << "\nTime-step " << i << "." << std::endl;
+		//std::cout << "\nTime-step " << i << "." << std::endl;
 
 		// Prediction
 		std::vector<rcptr<filters::gmm>> predictedStates = predictMultipleTargetsLinear(model, targets[i-1]);	
@@ -376,12 +376,136 @@ std::vector<rcptr<filters::gmm>> updateTargetStatesLinear(rcptr<LinearModel> mod
 				} // for
 			} // if
 		} // for
-		//updatedTargets[i] = weakMarginalisation(gmm);
+		updatedTargets[i] = weakMarginalisation(gmm);
+		/*
 		updatedTargets[i] = gaussianMixturePruning(gmm, 
 				model->gmmComponentWeightThreshold, 
 				model->gmmComponentUnionDistance, 
 				model->maximumNumberOfGmmComponents);   //weakMarginalisation(gmm);
+		*/
 	} // for
 
 	return updatedTargets;
 } // updatedTargetStatesLinear()
+
+std::vector<std::vector<rcptr<filters::gmm>>> runLinearGaussianMTFilter(rcptr<LinearModel> model) {
+	std::vector<std::vector<rcptr<filters::gmm>>> targets; targets.clear(); targets.resize(model->simulationLength);
+	std::vector<std::vector<ColVector<double>>> measurements = model->getMeasurements();
+	std::vector<std::vector<rcptr<filters::gmm>>> groundTruthBeliefs = model->getGroundTruthBeliefs();
+	std::vector<unsigned> cardinality = model->getCardinality();
+
+	// Add target prior for t=0
+	std::vector<rcptr<filters::gmm>> targetPriors =  model->getPriors(0);	
+	unsigned numberOfNewTargets = targetPriors.size();
+	for (unsigned j = 0; j < numberOfNewTargets; j++) targets[0].push_back(targetPriors[j]);
+
+	for (unsigned i = 1; i < model->simulationLength; i++) {
+		std::cout << "\nTime-step " << i << "." << std::endl;
+
+		// Prediction
+		std::vector<rcptr<filters::gmm>> predictedStates = predictMultipleTargetsLinear(model, targets[i-1]);	
+		std::vector<rcptr<filters::updateComponents>> kalmanComponents = createMultipleUpdateComponentsLinear(model, predictedStates);
+
+		// Create the update components
+		std::vector< std::vector<rcptr<filters::gmm>>> updateOptions = createUpdateOptionsLinear(model, predictedStates, 
+				kalmanComponents, measurements[i]);
+		std::vector<rcptr<filters::cfm>> likelihoods = createCanonicalLikelihoods(model, measurements[i]);
+		
+		// Data Association
+		Matrix<double> associationMatrix = createAssociationMatrix(model, measurements[i].size(), updateOptions);
+		associationMatrix = measurementToTargetTransform(associationMatrix);
+		Matrix<double> updatedAssociations = loopyBeliefUpdatePropagation(model, associationMatrix);
+
+		// Measurement Updates
+		targets[i] = updateTargetStatesLinearMT(model, predictedStates, likelihoods, updatedAssociations);
+
+		// Add in new targets
+		targetPriors =  model->getPriors(i); numberOfNewTargets = targetPriors.size();
+		for (unsigned j = 0; j < numberOfNewTargets; j++) targets[i].push_back(targetPriors[j]);
+	} // for
+
+	// Calculate the OSPA
+	std::vector<ColVector<double>> ospa = calculateOspa(model, groundTruthBeliefs, targets);
+
+	// Output results
+	outputResults(model, model->getIndividualGroundTruthTrajectories(), measurements, targets, ospa, cardinality);
+
+	return targets;
+} // runLinearGaussianFilter()
+
+std::vector<rcptr<filters::cfm>> createCanonicalLikelihoods(rcptr<LinearModel> model,
+		std::vector<ColVector<double>> z) {
+	
+	unsigned numberOfMeasurements = z.size();
+	std::vector<rcptr<filters::cfm>> likelihoods(numberOfMeasurements);
+
+	std::cout << "numberOfMeasurements: " << numberOfMeasurements << std::endl;
+
+	Matrix<double> I = gLinear::zeros<double>(model->xDimension, model->xDimension);
+	for(unsigned i = 0; i < model->xDimension; i++) I(i, i) = 1;
+
+	double det; int fail;
+	Matrix<double> Qinv = inv(model->Q, det, fail);
+	Matrix<double> Kxy = (I*(model->C).transpose())*Qinv; // Casting problem from ColDense to RowDense matrix?
+	Matrix<double> Kxx = Kxy*(model->C);
+
+	for (unsigned i = 0; i < numberOfMeasurements; i++) {
+		likelihoods[i] = uniqptr<filters::cfm>(new filters::cfm);
+		likelihoods[i]->g = {0};
+		likelihoods[i]->h = {Kxy*z[i]};
+		likelihoods[i]->K = {1.0*Kxx};
+	} // for
+
+	return likelihoods;
+} // createCanonicalLikelihoods()
+
+std::vector<rcptr<filters::gmm>> updateTargetStatesLinearMT(rcptr<LinearModel> model,
+		std::vector<rcptr<filters::gmm>> predictedStates,
+		std::vector<rcptr<filters::cfm>> likelihoods,
+		Matrix<double> updatedAssociations) {
+
+	std::cout << updatedAssociations << std::endl;
+
+	unsigned numberOfTargets = updatedAssociations.cols();
+	unsigned numberOfMeasurements = updatedAssociations.rows();
+	std::vector<rcptr<filters::gmm>> updatedTargets(numberOfTargets-1);
+	
+	for (unsigned i = 1; i < numberOfTargets; i++) {
+		rcptr<filters::cfm> updatedCfm = convertGmmToCfm(predictedStates[i-1]);
+		for (unsigned j = 0; j < numberOfMeasurements; j++) {
+
+			double associationProbability = updatedAssociations(j, i);
+			unsigned numberOfComponents = updatedCfm->g.size();
+
+			// Assign temporary variables
+			std::vector<double> tempG; tempG.clear();
+			std::vector<ColVector<double>> tempH; tempH.clear();
+			std::vector<Matrix<double>> tempK; tempK.clear();
+
+			for (unsigned k = 0; k < numberOfComponents; k++) {
+				// Un-updated state
+				if ( 1-associationProbability > 0.0 ) {
+					tempG.push_back( log(1-associationProbability) + updatedCfm->g[k] );
+					tempH.push_back( 1.0*updatedCfm->h[k] );
+					tempK.push_back( 1.0*updatedCfm->K[k] );
+				} // if
+
+				// Updated state
+				if (associationProbability > 0.0) {
+					tempG.push_back( log(associationProbability) + updatedCfm->g[k] );
+					tempH.push_back( updatedCfm->h[k] + likelihoods[j]->h[0] );
+					tempK.push_back( updatedCfm->K[k] + likelihoods[j]->K[0] );
+				} // if
+			} // for
+
+			// Reallocate 
+			updatedCfm->g = tempG;
+			updatedCfm->h = tempH;
+			updatedCfm->K = tempK;
+		} // for
+		rcptr<filters::gmm> gmm = convertCfmToGmm(updatedCfm);
+		updatedTargets[i-1] = weakMarginalisation(gmm);
+	} // for
+
+	return updatedTargets;
+} // updatedTargetStatesLinearMT()

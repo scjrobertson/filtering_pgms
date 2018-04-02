@@ -39,7 +39,7 @@ for i = 1:simulationLength
        targetName = sprintf('target%d', j);
        result = inifile(stateEstimateFileName, 'read', {stateEstimateNames, '', targetName});
        result = str2num(result{1});
-       numberOfMixtureComponents = size(result, 2)/(xDimension)
+       numberOfMixtureComponents = size(result, 2)/(xDimension);
        stateEstimates{i}{j} = reshape(result, [xDimension numberOfMixtureComponents]);
     end
 end

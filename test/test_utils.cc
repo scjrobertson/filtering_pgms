@@ -122,3 +122,15 @@ TEST_F (UtilsTest, TestGMMPruningInfinite) {
 	std::cout << (weakMarginal->mu[0]) << std::endl;
 	std::cout << (weakMarginal->S[0]) << std::endl;
 } // TestGMMPruning()
+
+TEST_F (UtilsTest, TestAssociationMatrixTransform) {
+	Matrix<double> A = gLinear::zeros<double>(3, 4);
+	A(0, 0) = 5e-3; A(0, 1) = 1e-2; A(0, 2) = 1e-9; A(0, 3) = 1e-12;
+	A(1, 0) = 5e-3; A(1, 1) = 1e-15; A(1, 2) = 1e-2; A(1, 3) = 1e-9;
+	A(2, 0) = 5e-3; A(2, 1) = 1e-9; A(2, 2) = 1e-9; A(2, 3) = 1e-2;
+
+	Matrix<double> B = measurementToTargetTransform(A);
+
+	std::cout << A << std::endl;
+	std::cout << B << std::endl;
+} // TestAssociationMatrixTransform()
