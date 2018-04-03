@@ -21,9 +21,9 @@ end
 for i = 1:numberOfGroundTruthTrajectories
     projectedGroundTruth = C*groundTruth{i}(2:end, :);
     
-    birthPoint = line(projectedGroundTruth(1, 1), projectedGroundTruth(2, 1), 'LineStyle','none','Marker','o', 'Markersize', 8,'LineWidth',1,'Color',0*ones(1,3));
-    truthLine = line(projectedGroundTruth(1, :), projectedGroundTruth(2, :), 'LineStyle','-','Marker','none','LineWidth',2,'Color',0*ones(1,3));
-    deathPoint = line(projectedGroundTruth(1, end), projectedGroundTruth(2, end), 'LineStyle','none','Marker','^', 'Markersize', 8,'LineWidth',1,'Color',0*ones(1,3));
+    birthPoint = line(projectedGroundTruth(1, 1), projectedGroundTruth(2, 1), 'LineStyle','none','Marker','o', 'Markersize', 12,'LineWidth',1,'Color',0*ones(1,3));
+    truthLine = line(projectedGroundTruth(1, :), projectedGroundTruth(2, :), 'LineStyle','-','Marker','none','LineWidth', 3,'Color',0*ones(1,3));
+    deathPoint = line(projectedGroundTruth(1, end), projectedGroundTruth(2, end), 'LineStyle','none','Marker','^', 'Markersize', 12,'LineWidth',1,'Color',0*ones(1,3));
 end
 % State Estimates
 for i = 1:simulationLength
@@ -53,9 +53,9 @@ for i = 1:numberOfGroundTruthTrajectories
     groundTruthTime = groundTruth{i}(1, :);
     projectedGroundTruth = C*groundTruth{i}(2:end, :);
     
-    birthPoint = line(groundTruthTime(1), projectedGroundTruth(1, 1), 'LineStyle','none','Marker','o', 'Markersize', 8, 'LineWidth',1,'Color',0*ones(1,3));
-    truthLine = line(groundTruthTime, projectedGroundTruth(1, :), 'LineStyle','-','Marker','none','LineWidth',2,'Color',0*ones(1,3));
-    deathPoint = line(groundTruthTime(end), projectedGroundTruth(1, end), 'LineStyle','none','Marker','^', 'Markersize', 8, 'LineWidth',1,'Color',0*ones(1,3));
+    birthPoint = line(groundTruthTime(1), projectedGroundTruth(1, 1), 'LineStyle','none','Marker','o', 'Markersize', 12, 'LineWidth',1,'Color',0*ones(1,3));
+    truthLine = line(groundTruthTime, projectedGroundTruth(1, :), 'LineStyle','-','Marker','none','LineWidth', 3,'Color',0*ones(1,3));
+    deathPoint = line(groundTruthTime(end), projectedGroundTruth(1, end), 'LineStyle','none','Marker','^', 'Markersize', 12, 'LineWidth',1,'Color',0*ones(1,3));
 end
 % State Estimates
 for i = 1:simulationLength
@@ -82,9 +82,9 @@ for i = 1:numberOfGroundTruthTrajectories
     groundTruthTime = groundTruth{i}(1, :);
     projectedGroundTruth = C*groundTruth{i}(2:end, :);
     
-    birthPoint = line(groundTruthTime(1), projectedGroundTruth(2, 1), 'LineStyle','none','Marker','o', 'Markersize', 8, 'LineWidth',1,'Color',0*ones(1,3));
-    truthLine = line(groundTruthTime, projectedGroundTruth(2, :), 'LineStyle','-','Marker','none','LineWidth',2,'Color',0*ones(1,3));
-    deathPoint = line(groundTruthTime(end), projectedGroundTruth(2, end), 'LineStyle','none','Marker','^', 'Markersize', 8, 'LineWidth',1,'Color',0*ones(1,3));
+    birthPoint = line(groundTruthTime(1), projectedGroundTruth(2, 1), 'LineStyle','none','Marker','o', 'Markersize', 12, 'LineWidth',1,'Color',0*ones(1,3));
+    truthLine = line(groundTruthTime, projectedGroundTruth(2, :), 'LineStyle','-','Marker','none','LineWidth', 3,'Color',0*ones(1,3));
+    deathPoint = line(groundTruthTime(end), projectedGroundTruth(2, end), 'LineStyle','none','Marker','^', 'Markersize', 12, 'LineWidth',1,'Color',0*ones(1,3));
 end
 % State Estimates
 for i = 1:simulationLength

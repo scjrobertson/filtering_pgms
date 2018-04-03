@@ -22,8 +22,8 @@
 int main(int, char *argv[]) {
 	
 	rcptr<LinearModel> model = uniqptr<LinearModel>(new LinearModel());
-	//std::vector<std::vector<rcptr<filters::gmm>>> stateEstimates = runLinearGaussianFilter(model);
-	std::vector<std::vector<rcptr<filters::gmm>>> stateEstimates = runLinearGaussianMTFilter(model);
+	std::vector<std::vector<rcptr<filters::gmm>>> stateEstimates = runLinearGaussianFilter(model);
+	//std::vector<std::vector<rcptr<filters::gmm>>> stateEstimates = runLinearGaussianMTFilter(model);
 
 	//std::cout << ospa << std::endl;
 

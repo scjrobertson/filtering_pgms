@@ -37,9 +37,9 @@ LinearModel::LinearModel() {
 	simulationLength = 50;
 
 	// Birth locations
-	birthTimes = {0};
-	deathTimes = {50};
-	targetPriors.resize(1);
+	birthTimes = {0, 0};
+	deathTimes = {50, 50};
+	targetPriors.resize(2);
 
 	// Target 1
 	targetPriors[0] = uniqptr<filters::gmm>(new filters::gmm);
@@ -53,11 +53,10 @@ LinearModel::LinearModel() {
 
 	(targetPriors[0]->S).resize(1);
 	targetPriors[0]->S[0] = gLinear::zeros<double>(xDimension, xDimension);
-	targetPriors[0]->S[0](0, 0) = 1.0; targetPriors[0]->S[0](1, 1) = 1.0;
-	targetPriors[0]->S[0](2, 2) = 1.0; targetPriors[0]->S[0](3, 3) = 1.0;
+	targetPriors[0]->S[0](0, 0) = 9.0; targetPriors[0]->S[0](1, 1) = 9.0;
+	targetPriors[0]->S[0](2, 2) = 9.0; targetPriors[0]->S[0](3, 3) = 9.0;
 	
 	// Target 2
-	/*
 	targetPriors[1] = uniqptr<filters::gmm>(new filters::gmm);
 	targetPriors[1]->id = 1;
 	targetPriors[1]->w = {1.0};
@@ -69,9 +68,8 @@ LinearModel::LinearModel() {
 
 	(targetPriors[1]->S).resize(1);
 	targetPriors[1]->S[0] = gLinear::zeros<double>(xDimension, xDimension);
-	targetPriors[1]->S[0](0, 0) = 1.0; targetPriors[1]->S[0](1, 1) = 1.0;
-	targetPriors[1]->S[0](2, 2) = 1.0; targetPriors[1]->S[0](3, 3) = 1.0;
-	*/
+	targetPriors[1]->S[0](0, 0) = 9.0; targetPriors[1]->S[0](1, 1) = 9.0;
+	targetPriors[1]->S[0](2, 2) = 9.0; targetPriors[1]->S[0](3, 3) = 9.0;
 	
 	// Meaurement model
 	C = gLinear::zeros<double>(zDimension, xDimension);
@@ -93,18 +91,18 @@ LinearModel::LinearModel() {
 	observationSpaceRange[1] = ColVector<double>(2);
 	observationSpaceRange[1][0] = -100; observationSpaceRange[1][1] = 100;
 
-	observationSpaceVolume = 1e4;
+	observationSpaceVolume = 4e4;
 
 	lambda = 60;
 
 	// Gaussian mixture pruning parameters
 	gmmComponentWeightThreshold = 1e-30;
-	gmmComponentUnionDistance = 9;//std::numeric_limits<double>::infinity();
-	maximumNumberOfGmmComponents = 3;
+	gmmComponentUnionDistance = 1;//std::numeric_limits<double>::infinity();
+	maximumNumberOfGmmComponents = 12;
 
 	// OSPA parameters
 	ospaP = 2;
-	ospaC = 0.25;
+	ospaC = 0.5;
 
 	this->generateGroundTruth();
 } // Constructor()

@@ -106,6 +106,44 @@ TEST_F (HellingerTest, TestGaussianMixtureHellingerDistance) {
 	double distance = gaussianMixtureHellingerDistance(f1->w, f1->mu, f1->S, f2->w, f2->mu, f2->S);
 } // TestGaussianMixtureHellinger()
 
+TEST_F (HellingerTest, TestSingle) {
+
+	// Mixand 1
+	std::vector<double> w1 = {1};
+	std::vector<ColVector<double>> mu1(1);
+	std::vector<Matrix<double>> S1(1);
+
+	mu1[0] = ColVector<double>(4);
+	mu1[0][0] = 5.800314e+01; mu1[0][1] = 5.797315e+01; mu1[0][2] = 2.059062e+00; mu1[0][3] = 1.957207e+00;
+
+	S1[0] = gLinear::zeros<double>(4, 4);
+	S1[0](0, 0) = 2.275074e-01; S1[0](0, 1) = -2.104731e-04; S1[0](0, 2) = 1.477753e-01; S1[0](0, 3) = 7.957950e-05;
+	S1[0](1, 0) = -2.104731e-04; S1[0](1, 1) = 2.275219e-01; S1[0](1, 2) = 7.960541e-05; S1[0](1, 3) = 1.477958e-01;
+	S1[0](2, 0) = 1.477753e-01; S1[0](2, 1) = 7.960541e-05; S1[0](2, 2) = 3.103863e-01; S1[0](2, 3) = -4.859647e-05;
+	S1[0](3, 0) = 7.957950e-05; S1[0](3, 1) = 1.477958e-01; S1[0](3, 2) = -4.859647e-05; S1[0](3, 3) = 3.103932e-01;
+
+	// Mixand 2
+	std::vector<double> w2 = {1};
+	std::vector<ColVector<double>> mu2(1);
+	std::vector<Matrix<double>> S2(1);
+
+	mu2[0] = ColVector<double>(4);
+	mu2[0][0] = 5.800355e+01; mu2[0][1] = 5.797279e+01; mu2[0][2] = 2.059906e+00; mu2[0][3] = 1.956423e+00;
+
+	S2[0] = gLinear::zeros<double>(4, 4);
+	S2[0](0, 0) = 2.270215e-01; S2[0](0, 1) = 0.000000e+00; S2[0](0, 2) = 1.479647e-01; S2[0](0, 3) = 0.000000e+00;
+	S2[0](1, 0) = 0.000000e+00; S2[0](1, 1) = 2.270215e-01; S2[0](1, 2) = 0.000000e+00; S2[0](1, 3) = 1.479647e-01;
+	S2[0](2, 0) = 1.479647e-01; S2[0](2, 1) = 0.000000e+00; S2[0](2, 2) = 3.102883e-01; S2[0](2, 3) = 0.000000e+00;
+	S2[0](3, 0) = 0.000000e+00; S2[0](3, 1) = 1.479647e-01; S2[0](3, 2) = 0.000000e+00; S2[0](3, 3) = 3.102883e-01;
+
+	double distance = gaussianHellingerDistance(mu1[0], S1[0], mu2[0], S2[0]);
+	double distanceGM = gaussianMixtureHellingerDistance(w1, mu1, S1, w2, mu2, S2);
+
+	std::cout << "Actual distance: " << distance << std::endl;
+	std::cout << "Approximate distance: " << distanceGM << std::endl;
+
+} // TestSingle()
+
 TEST_F (HellingerTest, TestUHellingerForSingles) {
 	std::vector<double> w1(1); w1[0] = f1->w[0];
 	std::vector<ColVector<double>> mu1(1); mu1[0] = 1.0*f1->mu[0];
@@ -115,9 +153,11 @@ TEST_F (HellingerTest, TestUHellingerForSingles) {
 	std::vector<ColVector<double>> mu2(1); mu2[0] = 1.0*f2->mu[0];
 	std::vector<Matrix<double>> S2(1); S2[0] = 1.0*f2->S[0];
 
+	/*
 	double distance = gaussianHellingerDistance(f1->mu[0], f1->S[0], f2->mu[0], f2->S[0]);
 	double distanceGM = gaussianMixtureHellingerDistance(w1, mu1, S1, w2, mu2, S2);
 
 	std::cout << "Actual distance: " << distance << std::endl;
 	std::cout << "Approximate distance: " << distanceGM << std::endl;
+	*/
 } // TestGaussianMixtureHellinger()

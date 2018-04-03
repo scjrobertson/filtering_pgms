@@ -20,18 +20,13 @@ rcptr<filters::gmm> weakMarginalisation(rcptr<filters::gmm> gmm) {
 	for (unsigned i = 0; i < numberOfComponents; i++) {
 		normalisedWeight[i] = (gmm->w[i])/w;
 		mu += normalisedWeight[i]*(gmm->mu[i]);
-		std::cout << "w[" << i << "]: " << normalisedWeight[i] << std::endl;
-		std::cout << "S[" << i << "]: " << gmm->S[i] << std::endl;
 	} // for
-	//std::cout << "mu: " << mu << std::endl;
 
 	// Compute the matched covariance
 	for (unsigned i = 0; i < numberOfComponents; i++) {
 		ColVector<double> difference = (gmm->mu[i]) - mu;
 		S += normalisedWeight[i]*( (gmm->S[i]) + (difference)*(difference.transpose()) );
 	} // for
-	
-	std::cout << "S: " << S << std::endl;
 
 	// Allocate the weak marginal
 	rcptr<filters::gmm> weakMarginal = uniqptr<filters::gmm>(new filters::gmm);

@@ -54,25 +54,27 @@ double gaussianMixtureHellingerDistance(std::vector<double> wOne,
 	std::vector<Matrix<double>> POne(sizeOfMixtureOne);
 	std::vector<Matrix<double>> PTwo(sizeOfMixtureTwo);
 
-	double normConstantOne = 0;
+	double normConstantOne = 0.0;
 	for (unsigned i = 0; i < sizeOfMixtureOne; i++) {
 		// Normalising constant
 		normConstantOne += wOne[i];
 		// Determinant and inverse
 		int fail;
 		POne[i] = inv(SOne[i], detPOne[i], fail); // Could also probably do Cholesky to speed things up?
+		//std::cout << "Det1: " << 1.0/detPOne[i] << std::endl;
 		// Sigma Points
 		cov2sp_2Dp1(muOne[i], SOne[i], centroidWeight, sigmaPointsOne[i], sigmaPointsWeightsOne[i]);
 	} // for
 	for (unsigned i = 0; i < sizeOfMixtureOne; i++) normWOne[i] = wOne[i]/normConstantOne;
 
-	double normConstantTwo = 0;
+	double normConstantTwo = 0.0;
 	for (unsigned i = 0; i < sizeOfMixtureTwo; i++) {
 		// Normalising constant
 		normConstantTwo += wTwo[i];
 		// Determinant and inverse
 		int fail;
 		PTwo[i] = inv(STwo[i], detPTwo[i], fail);
+		//std::cout << "Det2: " << 1.0/detPTwo[i] << std::endl;
 		// Sigma Points
 		cov2sp_2Dp1(muTwo[i], STwo[i], centroidWeight, sigmaPointsTwo[i], sigmaPointsWeightsTwo[i]);
 	} 
@@ -87,9 +89,10 @@ double gaussianMixtureHellingerDistance(std::vector<double> wOne,
 		for (unsigned j = 0; j < numberOfSigmaPoints; j++) {
 			double mixtureOnePotential = determineMixturePotential(sigmaPointsOne[i][j], normWOne, muOne, POne, detPOne);
 			double mixtureTwoPotential = determineMixturePotential(sigmaPointsOne[i][j], normWTwo, muTwo, PTwo, detPTwo);
-			double rFunction = pow(sqrt(mixtureOnePotential) - sqrt(mixtureTwoPotential), 2.0)/( 0.5*( mixtureOnePotential + mixtureTwoPotential )  );
+			double rFunction = pow(sqrt(mixtureOnePotential) - sqrt(mixtureTwoPotential), 2.0)/(0.5*( mixtureOnePotential + mixtureTwoPotential));
 			
 			componentContribution += sigmaPointsWeightsOne[i][j]*rFunction;
+			//componentContribution += (1.0/(numberOfSigmaPoints))*rFunction;
 		} // for
 		hSquared += 0.5*normWOne[i]*componentContribution;
 	} // for
@@ -100,14 +103,17 @@ double gaussianMixtureHellingerDistance(std::vector<double> wOne,
 		for (unsigned j = 0; j < numberOfSigmaPoints; j++) {
 			double mixtureOnePotential = determineMixturePotential(sigmaPointsTwo[i][j], normWOne, muOne, POne, detPOne);
 			double mixtureTwoPotential = determineMixturePotential(sigmaPointsTwo[i][j], normWTwo, muTwo, PTwo, detPTwo);
+			double rFunction = pow(sqrt(mixtureOnePotential) - sqrt(mixtureTwoPotential), 2.0)/(0.5*(mixtureOnePotential + mixtureTwoPotential) );
 
-			double rFunction = pow(sqrt(mixtureOnePotential) - sqrt(mixtureTwoPotential), 2)/( 0.5*( mixtureOnePotential + mixtureTwoPotential )  );
 			componentContribution += sigmaPointsWeightsTwo[i][j]*rFunction;
+			//componentContribution += (1.0/(numberOfSigmaPoints))*rFunction;
 		} // for
 		hSquared += 0.5*normWTwo[i]*componentContribution;
 	} // for
 
-	return sqrt(fabs(0.5*hSquared));
+	double hellingerDistance = sqrt((fabs(0.5*hSquared)));
+
+	return hellingerDistance;
 } // gaussianMixtureHellingerDistance()
 
 double determineMixturePotential(ColVector<double> point,
@@ -125,7 +131,6 @@ double determineMixturePotential(ColVector<double> point,
 		
 		ColVector<double> difference = point - mu[i];
 		potential += norm*exp( -0.5*(difference.transpose())*P[i]*(difference) );
-
 	} // for
 
 	return potential;
