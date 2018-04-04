@@ -13,7 +13,7 @@ ColVector<double> randomVector(int sizeX, std::default_random_engine generator, 
 class LinearModel {
 
 	public:
-		LinearModel();
+		LinearModel(unsigned clutterRate = 20, double sensorDetectionProbability = 0.95);
 
 	public:
 		unsigned xDimension;

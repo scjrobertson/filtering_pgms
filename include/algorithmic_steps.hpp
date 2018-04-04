@@ -33,7 +33,7 @@ std::vector<rcptr<filters::gmm>> updateTargetStatesLinear(rcptr<LinearModel> mod
 		Matrix<double> updatedAssociations);
 
 // Measurement-to-Target Filter
-std::vector<std::vector<rcptr<filters::gmm>>> runLinearGaussianMTFilter(rcptr<LinearModel> model);
+std::vector<std::vector<rcptr<filters::gmm>>> runLinearGaussianFilterMT(rcptr<LinearModel> model);
 
 std::vector<rcptr<filters::cfm>> createCanonicalLikelihoods(rcptr<LinearModel> model,
 		std::vector<ColVector<double>> measurements);
@@ -42,5 +42,10 @@ std::vector<rcptr<filters::gmm>> updateTargetStatesLinearMT(rcptr<LinearModel> m
 		std::vector<rcptr<filters::gmm>> predictedStates,
 		std::vector<rcptr<filters::cfm>> likelihoods,
 		Matrix<double> updatedAssociations);
+
+std::vector<std::vector<rcptr<filters::gmm>>> createUpdateOptionsLinearMT(rcptr<LinearModel> model, 
+		std::vector<rcptr<filters::gmm>> predictedStates,
+		std::vector<rcptr<filters::updateComponents>> kalmanComponents,
+		std::vector<ColVector<double>> measurements);
 
 #endif // ALGORITHMIC_STEPS_HPP

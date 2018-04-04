@@ -9,7 +9,7 @@
 #include "vector.hpp"
 #include "stdfun.hpp"
 
-LinearModel::LinearModel() {
+LinearModel::LinearModel(unsigned clutterRate, double sensorDetectionProbability) {
 	// State and measurement space dimensions
 	xDimension = 4;
 	zDimension = 2;
@@ -80,7 +80,7 @@ LinearModel::LinearModel() {
 	Q(0, 0) = 1; Q(1, 1) = 1;
 	Q *= q0;
 
-	detectionProbability = 0.95;
+	detectionProbability = sensorDetectionProbability;
 
 	// Clutter model
 	observationSpaceRange.resize(zDimension);
@@ -93,7 +93,7 @@ LinearModel::LinearModel() {
 
 	observationSpaceVolume = 4e4;
 
-	lambda = 60;
+	lambda = clutterRate;
 
 	// Gaussian mixture pruning parameters
 	gmmComponentWeightThreshold = 1e-30;
@@ -148,7 +148,7 @@ void LinearModel::generateGroundTruth() {
 
 			// Generate a measurement
 			ColVector<double> muTruth = (this->A)*groundTruth[i-1][j] + this->u;
-			ColVector<double> zMeasurement = (this->C)*muTruth + randomVector(this->zDimension, generator, 0, 0.25);
+			ColVector<double> zMeasurement = (this->C)*muTruth + randomVector(this->zDimension, generator, 0, 1);
 			if ( uniform(generator) <= this->detectionProbability ) this->measurements[i].push_back(1.0*zMeasurement);
 
 			int fail; double detCov;

@@ -16,8 +16,6 @@ rcptr<FactorOperator> defaultMarginalizer = uniqptr<FactorOperator>(new Discrete
 std::vector<std::vector<rcptr<filters::gmm>>> runLinearGaussianFilter(rcptr<LinearModel> model) {
 	std::vector<std::vector<rcptr<filters::gmm>>> targets; targets.clear(); targets.resize(model->simulationLength);
 	std::vector<std::vector<ColVector<double>>> measurements = model->getMeasurements();
-	std::vector<std::vector<rcptr<filters::gmm>>> groundTruthBeliefs = model->getGroundTruthBeliefs();
-	std::vector<unsigned> cardinality = model->getCardinality();
 
 	// Add target prior for t=0
 	std::vector<rcptr<filters::gmm>> targetPriors =  model->getPriors(0);	
@@ -44,12 +42,6 @@ std::vector<std::vector<rcptr<filters::gmm>>> runLinearGaussianFilter(rcptr<Line
 		targetPriors =  model->getPriors(i); numberOfNewTargets = targetPriors.size();
 		for (unsigned j = 0; j < numberOfNewTargets; j++) targets[i].push_back(targetPriors[j]);
 	} // for
-
-	// Calculate the OSPA
-	std::vector<ColVector<double>> ospa = calculateOspa(model, groundTruthBeliefs, targets);
-
-	// Output results
-	outputResults(model, model->getIndividualGroundTruthTrajectories(), measurements, targets, ospa, cardinality);
 
 	return targets;
 } // runLinearGaussianFilter()
@@ -144,7 +136,7 @@ std::vector< std::vector<rcptr<filters::gmm>>> createUpdateOptionsLinear(rcptr<L
 		(predictedComponent->S).resize(numberOfMixtureComponents);
 
 		for (unsigned j = 0; j < numberOfMixtureComponents; j++) {
-			predictedComponent->w[j] = (1 - model->detectionProbability)*(predictedStates[i]->w[j])/(model->observationSpaceVolume);
+			predictedComponent->w[j] = (model->lambda)*(1 - model->detectionProbability)*(predictedStates[i]->w[j])/(model->observationSpaceVolume);
 			predictedComponent->mu[j] = predictedStates[i]->mu[j];
 			predictedComponent->S[j] = predictedStates[i]->S[j];
 		} // for
@@ -307,7 +299,7 @@ Matrix<double> loopyBeliefUpdatePropagation (rcptr<LinearModel> linearModel,
 	std::vector<rcptr<Factor>> finalAssociationProbs(numberOfTargets);
 	try {
 		// Pass messages until convergence
-		unsigned nMsg = loopyBU_CG(*clusterGraph, msgs, msgQ, 0.33);
+		unsigned nMsg = loopyBU_CG(*clusterGraph, msgs, msgQ, 0.5);
 
 		for (unsigned i = 0; i < numberOfTargets; i++) {
 			emdw::RVIds nodeVars = {i};
@@ -388,7 +380,7 @@ std::vector<rcptr<filters::gmm>> updateTargetStatesLinear(rcptr<LinearModel> mod
 	return updatedTargets;
 } // updatedTargetStatesLinear()
 
-std::vector<std::vector<rcptr<filters::gmm>>> runLinearGaussianMTFilter(rcptr<LinearModel> model) {
+std::vector<std::vector<rcptr<filters::gmm>>> runLinearGaussianFilterMT(rcptr<LinearModel> model) {
 	std::vector<std::vector<rcptr<filters::gmm>>> targets; targets.clear(); targets.resize(model->simulationLength);
 	std::vector<std::vector<ColVector<double>>> measurements = model->getMeasurements();
 	std::vector<std::vector<rcptr<filters::gmm>>> groundTruthBeliefs = model->getGroundTruthBeliefs();
@@ -400,14 +392,14 @@ std::vector<std::vector<rcptr<filters::gmm>>> runLinearGaussianMTFilter(rcptr<Li
 	for (unsigned j = 0; j < numberOfNewTargets; j++) targets[0].push_back(targetPriors[j]);
 
 	for (unsigned i = 1; i < model->simulationLength; i++) {
-		std::cout << "\nTime-step " << i << "." << std::endl;
+		//std::cout << "\nTime-step " << i << "." << std::endl;
 
 		// Prediction
 		std::vector<rcptr<filters::gmm>> predictedStates = predictMultipleTargetsLinear(model, targets[i-1]);	
 		std::vector<rcptr<filters::updateComponents>> kalmanComponents = createMultipleUpdateComponentsLinear(model, predictedStates);
 
 		// Create the update components
-		std::vector< std::vector<rcptr<filters::gmm>>> updateOptions = createUpdateOptionsLinear(model, predictedStates, 
+		std::vector< std::vector<rcptr<filters::gmm>>> updateOptions = createUpdateOptionsLinearMT(model, predictedStates, 
 				kalmanComponents, measurements[i]);
 		std::vector<rcptr<filters::cfm>> likelihoods = createCanonicalLikelihoods(model, measurements[i]);
 		
@@ -439,7 +431,7 @@ std::vector<rcptr<filters::cfm>> createCanonicalLikelihoods(rcptr<LinearModel> m
 	unsigned numberOfMeasurements = z.size();
 	std::vector<rcptr<filters::cfm>> likelihoods(numberOfMeasurements);
 
-	std::cout << "numberOfMeasurements: " << numberOfMeasurements << std::endl;
+	//std::cout << "numberOfMeasurements: " << numberOfMeasurements << std::endl;
 
 	Matrix<double> I = gLinear::zeros<double>(model->xDimension, model->xDimension);
 	for(unsigned i = 0; i < model->xDimension; i++) I(i, i) = 1;
@@ -458,6 +450,55 @@ std::vector<rcptr<filters::cfm>> createCanonicalLikelihoods(rcptr<LinearModel> m
 
 	return likelihoods;
 } // createCanonicalLikelihoods()
+
+std::vector< std::vector<rcptr<filters::gmm>>> createUpdateOptionsLinearMT(rcptr<LinearModel> model, 
+		std::vector<rcptr<filters::gmm>> predictedStates,
+		std::vector<rcptr<filters::updateComponents>> kalmanComponents,
+		std::vector<ColVector<double>> z
+		) {
+	
+	unsigned numberOfTargets = kalmanComponents.size();
+	unsigned numberOfMeasurements = z.size();
+	std::vector<std::vector<rcptr<filters::gmm>>> updateOptions(numberOfTargets);
+
+	for (unsigned i = 0; i < numberOfTargets; i++) {
+		unsigned numberOfMixtureComponents = (predictedStates[i]->w).size();
+		updateOptions[i].resize(numberOfMeasurements+1);
+
+		// Add in missed measurement option
+		rcptr<filters::gmm> predictedComponent = uniqptr<filters::gmm>(new filters::gmm);
+		(predictedComponent->w).resize(numberOfMixtureComponents); // Lots of this, put a method in the struct?
+		(predictedComponent->mu).resize(numberOfMixtureComponents);
+		(predictedComponent->S).resize(numberOfMixtureComponents);
+
+		for (unsigned j = 0; j < numberOfMixtureComponents; j++) {
+			predictedComponent->w[j] = (model->lambda)*(predictedStates[i]->w[j])/(model->observationSpaceVolume);
+			predictedComponent->mu[j] = predictedStates[i]->mu[j];
+			predictedComponent->S[j] = predictedStates[i]->S[j];
+		} // for
+		updateOptions[i][0] = predictedComponent;
+
+		// Add in the rest of the options
+		for (unsigned j = 0; j < numberOfMeasurements; j++) {
+			rcptr<filters::gmm> updatedComponent = uniqptr<filters::gmm>(new filters::gmm);
+			(updatedComponent->w).resize(numberOfMixtureComponents);
+			(updatedComponent->mu).resize(numberOfMixtureComponents);
+			(updatedComponent->S).resize(numberOfMixtureComponents);
+			
+			for (unsigned k = 0; k < numberOfMixtureComponents; k++) {
+				ColVector<double> difference = z[j] - kalmanComponents[i]->z[k];
+				double likelihood = exp(-0.5*(difference.transpose()*(kalmanComponents[i]->P[k])*difference));
+
+				updatedComponent->w[k] = (kalmanComponents[i]->w[k])*(likelihood);
+				updatedComponent->mu[k] = kalmanComponents[i]->mu[k] + kalmanComponents[i]->K[k]*z[j];
+				updatedComponent->S[k] = kalmanComponents[i]->S[k];
+			} // for
+			updateOptions[i][j+1] = updatedComponent;
+		} // for
+	} // for
+	return updateOptions;
+} // updateMultipleLinear()
+
 
 std::vector<rcptr<filters::gmm>> updateTargetStatesLinearMT(rcptr<LinearModel> model,
 		std::vector<rcptr<filters::gmm>> predictedStates,

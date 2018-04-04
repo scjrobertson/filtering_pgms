@@ -31,4 +31,6 @@ void outputResults(rcptr<LinearModel> model,
 		std::vector<ColVector<double>> ospa,
 		std::vector<unsigned> cardinality);
 
+void printOspaTrials(std::vector<std::vector<std::vector<ColVector<double>>>> ospa);
+
 #endif // UTILS_HPP

@@ -333,3 +333,29 @@ void outputResults(rcptr<LinearModel> model,
 	ospaFile.close();
 
 } // outputResults
+
+void printOspaTrials(std::vector<std::vector<std::vector<ColVector<double>>>> ospa) { 	
+	unsigned numberOfTrials = ospa.size();
+	if (numberOfTrials == 0) return;
+	unsigned numberOfSimulationsPerTrial = ospa[0].size();
+	
+	std::ofstream trialFile;
+	trialFile.open("matlab/data/clutterTrials.ini");
+
+	trialFile << "[SIMULATION INFORMATION]";
+	trialFile << "numberOfTrials = " << numberOfTrials;
+	trialFile << "numberOfSimulationsPerTrial = " << numberOfSimulationsPerTrial;
+	trialFile << "simulationLength = " << 50;
+	trialFile << "ospaC = 0.5";
+
+	for (unsigned i = 0; i < numberOfTrials; i++) {
+		trialFile << "\n[TRIAL " << i+1 << "]";
+		for (unsigned j = 0; j < numberOfSimulationsPerTrial; j++) {
+			trialFile << "\nsimulation" << j+1 << "= ";
+			unsigned simulationLength = ospa[i][j].size();
+			for (unsigned k = 0; k < simulationLength; k++) trialFile << ospa[i][j][k][1] << ", ";
+		} // for
+	} // for
+	
+	trialFile.close();
+} // printOspaTrials()
