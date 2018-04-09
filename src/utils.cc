@@ -340,20 +340,18 @@ void printOspaTrials(std::vector<std::vector<std::vector<ColVector<double>>>> os
 	unsigned numberOfSimulationsPerTrial = ospa[0].size();
 	
 	std::ofstream trialFile;
-	trialFile.open("matlab/data/clutterTrials.ini");
+	trialFile.open("matlab/data/clutterTrials.csv");
 
-	trialFile << "[SIMULATION INFORMATION]";
-	trialFile << "numberOfTrials = " << numberOfTrials;
-	trialFile << "numberOfSimulationsPerTrial = " << numberOfSimulationsPerTrial;
-	trialFile << "simulationLength = " << 50;
-	trialFile << "ospaC = 0.5";
+	trialFile << numberOfTrials << "\n";
+	trialFile << numberOfSimulationsPerTrial << "\n";
+	trialFile << 50 << "\n";
+	trialFile << 1 << "\n";
 
 	for (unsigned i = 0; i < numberOfTrials; i++) {
-		trialFile << "\n[TRIAL " << i+1 << "]";
 		for (unsigned j = 0; j < numberOfSimulationsPerTrial; j++) {
-			trialFile << "\nsimulation" << j+1 << "= ";
 			unsigned simulationLength = ospa[i][j].size();
-			for (unsigned k = 0; k < simulationLength; k++) trialFile << ospa[i][j][k][1] << ", ";
+			for (unsigned k = 0; k < simulationLength; k++) trialFile << ospa[i][j][k][1] << ",";
+			trialFile << "\n";
 		} // for
 	} // for
 	

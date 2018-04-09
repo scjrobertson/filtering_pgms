@@ -22,7 +22,11 @@ double gaussianHellingerDistance (ColVector<double> muOne,
 	double delta = sqrt( (sqrt(detSOne*detSTwo)*detP)/pow(0.5, dimension) );
 	double epsilon = exp( -0.25*(mu.transpose())*P*(mu)   );
 
-	return sqrt(1 - delta*epsilon);
+	double hellinger = fabs(sqrt(1 - delta*epsilon));
+
+	if (std::isnan(hellinger)) hellinger = 0.0;
+
+	return hellinger;
 } // gaussianHellingerDistance()
 
 double gaussianMixtureHellingerDistance(std::vector<double> wOne,

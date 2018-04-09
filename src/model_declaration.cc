@@ -1,6 +1,8 @@
 #include "model_declaration.hpp"
 #include <math.h>
 #include <limits>
+#include <chrono>
+#include <time.h>
 
 #include "vconstruct.hpp"
 #include "mean_cov.hpp"
@@ -37,9 +39,9 @@ LinearModel::LinearModel(unsigned clutterRate, double sensorDetectionProbability
 	simulationLength = 50;
 
 	// Birth locations
-	birthTimes = {0, 0};
-	deathTimes = {50, 50};
-	targetPriors.resize(2);
+	birthTimes = {0};
+	deathTimes = {50};
+	targetPriors.resize(1);
 
 	// Target 1
 	targetPriors[0] = uniqptr<filters::gmm>(new filters::gmm);
@@ -53,10 +55,11 @@ LinearModel::LinearModel(unsigned clutterRate, double sensorDetectionProbability
 
 	(targetPriors[0]->S).resize(1);
 	targetPriors[0]->S[0] = gLinear::zeros<double>(xDimension, xDimension);
-	targetPriors[0]->S[0](0, 0) = 9.0; targetPriors[0]->S[0](1, 1) = 9.0;
-	targetPriors[0]->S[0](2, 2) = 9.0; targetPriors[0]->S[0](3, 3) = 9.0;
+	targetPriors[0]->S[0](0, 0) = 1.0; targetPriors[0]->S[0](1, 1) = 1.0;
+	targetPriors[0]->S[0](2, 2) = 1.0; targetPriors[0]->S[0](3, 3) = 1.0;
 	
 	// Target 2
+	/*
 	targetPriors[1] = uniqptr<filters::gmm>(new filters::gmm);
 	targetPriors[1]->id = 1;
 	targetPriors[1]->w = {1.0};
@@ -70,6 +73,7 @@ LinearModel::LinearModel(unsigned clutterRate, double sensorDetectionProbability
 	targetPriors[1]->S[0] = gLinear::zeros<double>(xDimension, xDimension);
 	targetPriors[1]->S[0](0, 0) = 9.0; targetPriors[1]->S[0](1, 1) = 9.0;
 	targetPriors[1]->S[0](2, 2) = 9.0; targetPriors[1]->S[0](3, 3) = 9.0;
+	*/
 	
 	// Meaurement model
 	C = gLinear::zeros<double>(zDimension, xDimension);
@@ -80,7 +84,8 @@ LinearModel::LinearModel(unsigned clutterRate, double sensorDetectionProbability
 	Q(0, 0) = 1; Q(1, 1) = 1;
 	Q *= q0;
 
-	detectionProbability = sensorDetectionProbability;
+	detectionProbability = 0.75;
+	this->sensorDetectionProbability = sensorDetectionProbability;
 
 	// Clutter model
 	observationSpaceRange.resize(zDimension);
@@ -102,7 +107,7 @@ LinearModel::LinearModel(unsigned clutterRate, double sensorDetectionProbability
 
 	// OSPA parameters
 	ospaP = 2;
-	ospaC = 0.5;
+	ospaC = 1;
 
 	this->generateGroundTruth();
 } // Constructor()
@@ -116,7 +121,10 @@ void LinearModel::generateGroundTruth() {
 	this->cardinality.resize(this->simulationLength);
 	unsigned numberOfTargets = this->birthTimes.size();
 
-	std::default_random_engine generator(time(0));
+	std::chrono::milliseconds timeSeed = std::chrono::duration_cast<std::chrono::milliseconds> (std::chrono::system_clock::now().time_since_epoch());
+	unsigned seed = timeSeed.count();
+
+	std::default_random_engine generator(seed);
 	std::poisson_distribution<unsigned> poisson(this->lambda);
 	std::uniform_real_distribution<double> uniform(0, 1.0);
 
@@ -139,36 +147,10 @@ void LinearModel::generateGroundTruth() {
 	for (unsigned i = 1; i < this->simulationLength; i++) {
 		(this->beliefs[i]).clear(); (this->groundTruth[i]).clear();
 		unsigned currentTargetNumber = beliefs[i-1].size();
-		// Generate belief for exsiting targets;
-		for (unsigned j = 0; j < currentTargetNumber; j++) {
-			if ( i == (this->deathTimes[ beliefs[i-1][j]->id ]) ) continue;
 
-			ColVector<double> muPred = (this->A)*(beliefs[i-1][j]->mu[0]) + this->u;
-			Matrix<double> covPred = (this->A)*(beliefs[i-1][j]->S[0])*((this->A).transpose()) + this->R;
-
-			// Generate a measurement
-			ColVector<double> muTruth = (this->A)*groundTruth[i-1][j] + this->u;
-			ColVector<double> zMeasurement = (this->C)*muTruth + randomVector(this->zDimension, generator, 0, 1);
-			if ( uniform(generator) <= this->detectionProbability ) this->measurements[i].push_back(1.0*zMeasurement);
-
-			int fail; double detCov;
-			Matrix<double> K = (covPred)*( (this->C).transpose())*inv( (this->C)*(covPred)*((this->C).transpose()) + this->Q, detCov, fail);
-			ColVector<double> mu = muPred + K*( zMeasurement - (this->C)*muPred );
-			Matrix<double> S = ( identity - K*(this->C) )*covPred;
-
-			// If the target is still alive, add it to the ground truth beliefs.
-			rcptr<filters::gmm> posterior = uniqptr<filters::gmm>(new filters::gmm);
-			posterior->id = beliefs[i-1][j]->id;
-			posterior->w = {1};
-			posterior->mu = {1.0*mu};
-			posterior->S = {1.0*S};
-			(this->beliefs[i]).push_back(posterior);
-
-			// Add ground truths
-			(this->groundTruth[i]).push_back(muTruth);
-		} // for
 
 		// Add in clutter!
+		this->measurements[i].clear();
 		unsigned numberOfClutterMeasurements = (unsigned) poisson(generator);
 		for (unsigned j = 0; j < numberOfClutterMeasurements; j++) {
 			ColVector<double> ranges = ColVector<double>(2);
@@ -179,7 +161,68 @@ void LinearModel::generateGroundTruth() {
 
 			this->measurements[i].push_back(1.0*ranges);
 		} // for
-		
+
+		// Determine which targets missed their measurements
+		unsigned numberOfMeasurements = numberOfClutterMeasurements;
+		std::vector<double> missedDetection(currentTargetNumber);
+		for (unsigned j = 0; j < currentTargetNumber; j++) {		
+			missedDetection[j] = uniform(generator);
+			if (missedDetection[j] <= this->sensorDetectionProbability) numberOfMeasurements++;
+		} // for
+		double priorProbability = (1.0)/(this->lambda + this->sensorDetectionProbability*(numberOfMeasurements - this->lambda));
+
+		// Generate belief for exsiting targets;
+		for (unsigned j = 0; j < currentTargetNumber; j++) {
+			if ( i == (this->deathTimes[ beliefs[i-1][j]->id ]) ) continue;
+
+			ColVector<double> muPred = (this->A)*(beliefs[i-1][j]->mu[0]) + this->u;
+			Matrix<double> covPred = (this->A)*(beliefs[i-1][j]->S[0])*((this->A).transpose()) + this->R;
+
+			// Generate a measurement
+			ColVector<double> muTruth = (this->A)*groundTruth[i-1][j] + this->u;
+			ColVector<double> zMeasurement = (this->C)*muTruth + randomVector(this->zDimension, generator, 0, 1);
+			rcptr<filters::gmm> posterior = uniqptr<filters::gmm>(new filters::gmm);
+			posterior->id = beliefs[i-1][j]->id;
+			posterior->w = {1};
+
+			if ( missedDetection[j] <= this->sensorDetectionProbability ) {
+				this->measurements[i].push_back(1.0*zMeasurement);
+
+				// Determine precision matrix
+				int fail; double detCov;
+				Matrix<double> Kzz = inv((this->C)*(covPred)*((this->C).transpose()) + this->Q, detCov, fail);
+
+				// Calculate likelihood
+				ColVector<double> difference = zMeasurement - (this->C)*muPred;
+				double likelihood = exp(-0.5*(difference.transpose()*(Kzz)*difference))
+					*(1.0/(pow(detCov, -0.5)*pow(2*M_PI, 0.5*this->zDimension) ));
+
+				// Kalman posterior statistics
+				Matrix<double> K = (covPred)*( (this->C).transpose())*Kzz;
+				ColVector<double> mu = muPred + K*( zMeasurement - (this->C)*muPred );
+				Matrix<double> S = ( identity - K*(this->C) )*covPred;
+
+				// Determine weights
+				double w0 = (this->lambda*(1 - this->sensorDetectionProbability))*priorProbability/(this->observationSpaceVolume);
+				double w1 = (this->sensorDetectionProbability)*priorProbability*likelihood;
+				w0 /= (w0+w1); w1 /= (w0+w1);
+
+				ColVector<double> weakMu = w0*muPred + w1*mu;
+				Matrix<double> weakS = w0*covPred + w1*S + w0*(muPred - weakMu)*((muPred - weakMu).transpose())  
+					+ w1*(mu - weakMu)*((mu - weakMu).transpose());
+
+				posterior->mu = {1.0*mu};
+				posterior->S = {1.0*S};
+			} else {
+				posterior->mu = {1.0*muPred};
+				posterior->S = {1.0*covPred};
+			}
+
+			(this->beliefs[i]).push_back(posterior); // 
+			// Add ground truths
+			(this->groundTruth[i]).push_back(muTruth);
+		} // for
+
 		// Add in new targets!
 		for (unsigned j = targetCounter; j < numberOfTargets; j++) {
 			if ((i+1) == this->birthTimes[j]) {

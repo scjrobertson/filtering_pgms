@@ -125,6 +125,8 @@ std::vector< std::vector<rcptr<filters::gmm>>> createUpdateOptionsLinear(rcptr<L
 	unsigned numberOfMeasurements = z.size();
 	std::vector<std::vector<rcptr<filters::gmm>>> updateOptions(numberOfTargets);
 
+	double priorProb = (1.0)/(model->lambda + model->detectionProbability*(numberOfMeasurements - model->lambda));
+
 	for (unsigned i = 0; i < numberOfTargets; i++) {
 		unsigned numberOfMixtureComponents = (predictedStates[i]->w).size();
 		updateOptions[i].resize(numberOfMeasurements+1);
@@ -136,7 +138,8 @@ std::vector< std::vector<rcptr<filters::gmm>>> createUpdateOptionsLinear(rcptr<L
 		(predictedComponent->S).resize(numberOfMixtureComponents);
 
 		for (unsigned j = 0; j < numberOfMixtureComponents; j++) {
-			predictedComponent->w[j] = (model->lambda)*(1 - model->detectionProbability)*(predictedStates[i]->w[j])/(model->observationSpaceVolume);
+			predictedComponent->w[j] = (model->lambda)*(1 - model->detectionProbability)*(priorProb)*
+				(predictedStates[i]->w[j])/(model->observationSpaceVolume);
 			predictedComponent->mu[j] = predictedStates[i]->mu[j];
 			predictedComponent->S[j] = predictedStates[i]->S[j];
 		} // for
@@ -153,7 +156,7 @@ std::vector< std::vector<rcptr<filters::gmm>>> createUpdateOptionsLinear(rcptr<L
 				ColVector<double> difference = z[j] - kalmanComponents[i]->z[k];
 				double likelihood = exp(-0.5*(difference.transpose()*(kalmanComponents[i]->P[k])*difference));
 
-				updatedComponent->w[k] = (model->detectionProbability)*(kalmanComponents[i]->w[k])*(likelihood);
+				updatedComponent->w[k] = (model->detectionProbability)*(priorProb)*(kalmanComponents[i]->w[k])*(likelihood);
 				updatedComponent->mu[k] = kalmanComponents[i]->mu[k] + kalmanComponents[i]->K[k]*z[j];
 				updatedComponent->S[k] = kalmanComponents[i]->S[k];
 			} // for

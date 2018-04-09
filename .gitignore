@@ -9,3 +9,4 @@ build
 *.ini
 *.csv
 *.m~
+*.fig

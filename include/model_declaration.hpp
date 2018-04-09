@@ -42,6 +42,7 @@ class LinearModel {
 		Matrix<double> Q;
 
 		double detectionProbability;
+		double sensorDetectionProbability;
 
 	public:
 		std::vector<ColVector<double>> observationSpaceRange;
