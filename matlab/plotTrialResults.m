@@ -1,6 +1,7 @@
 addpath data;
+close all; clc;
 %% Load the data
-fileName = 'clutterTrials.csv';
+fileName = 'detectionTrials.csv';
 ospa = readTrialFile(fileName);
 [numberOfTrials, numberOfSimulationsPerTrial, simulationLength] = size(ospa);
 %% Calculate mean and standard deviation for each trial
@@ -21,7 +22,7 @@ end
 indices = find(meanOspa-stdDevOspa < 0);
 stdDevOspa(indices) = meanOspa(indices);
 
-xAxis = 5*(1:numberOfTrials);
+xAxis = 0.05*(0:numberOfTrials-1);
 
 figure(); hold on; grid on; box on;
 bar(xAxis, meanOspa);

@@ -55,8 +55,8 @@ LinearModel::LinearModel(unsigned clutterRate, double sensorDetectionProbability
 
 	(targetPriors[0]->S).resize(1);
 	targetPriors[0]->S[0] = gLinear::zeros<double>(xDimension, xDimension);
-	targetPriors[0]->S[0](0, 0) = 1.0; targetPriors[0]->S[0](1, 1) = 1.0;
-	targetPriors[0]->S[0](2, 2) = 1.0; targetPriors[0]->S[0](3, 3) = 1.0;
+	targetPriors[0]->S[0](0, 0) = 9.0; targetPriors[0]->S[0](1, 1) = 9.0;
+	targetPriors[0]->S[0](2, 2) = 9.0; targetPriors[0]->S[0](3, 3) = 9.0;
 	
 	// Target 2
 	/*
@@ -66,8 +66,8 @@ LinearModel::LinearModel(unsigned clutterRate, double sensorDetectionProbability
 	
 	(targetPriors[1]->mu).resize(1);
 	targetPriors[1]->mu[0] = ColVector<double>(xDimension);
-	targetPriors[1]->mu[0][0] = -40.0; targetPriors[1]->mu[0][1] = -40.0;
-	targetPriors[1]->mu[0][2] = 2.0; targetPriors[1]->mu[0][3] = 2.0;
+	targetPriors[1]->mu[0][0] = -30.0; targetPriors[1]->mu[0][1] = 30.0;
+	targetPriors[1]->mu[0][2] = 2.0; targetPriors[1]->mu[0][3] = -2.0;
 
 	(targetPriors[1]->S).resize(1);
 	targetPriors[1]->S[0] = gLinear::zeros<double>(xDimension, xDimension);
@@ -84,7 +84,7 @@ LinearModel::LinearModel(unsigned clutterRate, double sensorDetectionProbability
 	Q(0, 0) = 1; Q(1, 1) = 1;
 	Q *= q0;
 
-	detectionProbability = 0.75;
+	detectionProbability = sensorDetectionProbability;
 	this->sensorDetectionProbability = sensorDetectionProbability;
 
 	// Clutter model

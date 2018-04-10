@@ -21,10 +21,10 @@
  */
 int main(int, char *argv[]) {
 
-	unsigned numberOfTrials = 40;
-	std::vector<unsigned> variable(numberOfTrials);
-	for (unsigned i = 0; i < numberOfTrials; i++) variable[i] = 5*(i+1);
-	//variable[20] = 0.99;
+	unsigned numberOfTrials = 21;
+	std::vector<double> variable(numberOfTrials);
+	for (unsigned i = 0; i < numberOfTrials; i++) variable[i] = 0.05*(i);
+	variable[20] = 0.99;
 
 	unsigned numberOfSimulationsPerTrial = 5000;
 	std::vector<std::vector<std::vector<ColVector<double>>>> ospa(numberOfTrials);
@@ -35,7 +35,7 @@ int main(int, char *argv[]) {
 		for (unsigned j = 0; j < numberOfSimulationsPerTrial; j++) {
 			std::cout << "Trial " << i << ", Variable: " << variable[i] << ", Simulation: " << j << std::endl;
 			// Declare model;
-			rcptr<LinearModel> model = uniqptr<LinearModel>(new LinearModel(variable[i], 0.98));
+			rcptr<LinearModel> model = uniqptr<LinearModel>(new LinearModel(20, variable[i]));
 			
 			// Load the ground truth
 			std::vector<std::vector<rcptr<filters::gmm>>> groundTruthBeliefs = model->getGroundTruthBeliefs();
@@ -46,7 +46,7 @@ int main(int, char *argv[]) {
 			// Calculate the OSPA
 			ospa[i][j] = calculateOspa(model, groundTruthBeliefs, stateEstimates);
 
-			if (i == 4 && j == 2000) {
+			if (i == 0 && j == 0) {
 				// Load ground truth trajectories
 				std::vector<std::vector<ColVector<double>>> groundTruthTrajectories = model->getIndividualGroundTruthTrajectories();
 				// Get cardinality

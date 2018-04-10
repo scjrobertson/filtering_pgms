@@ -34,9 +34,19 @@ std::vector<std::vector<rcptr<filters::gmm>>> runLinearGaussianFilter(rcptr<Line
 				kalmanComponents, measurements[i]);
 		Matrix<double> associationMatrix = createAssociationMatrix(model, measurements[i].size(), updateOptions);
 		Matrix<double> updatedAssociations = loopyBeliefUpdatePropagation(model, associationMatrix);
+		
+		/*
+		Matrix<double> spoof = gLinear::zeros<double>(associationMatrix.rows(), associationMatrix.cols()); spoof.assignToAll(1.0);
+		for (unsigned i = 0; i < associationMatrix.rows(); i++) {
+			double rowNorm = 0.0;
+			for (unsigned j = 0; j < associationMatrix.cols(); j++) rowNorm += associationMatrix(i, j);
+			for (unsigned j = 0; j < associationMatrix.cols(); j++) associationMatrix(i, j) /= rowNorm;
+		} // for
+		*/
 
 		// Measurement Updates
 		targets[i] = updateTargetStatesLinear(model, updateOptions, associationMatrix, updatedAssociations);
+		//targets[i] = updateTargetStatesLinear(model, updateOptions, spoof, associationMatrix);
 
 		// Add in new targets
 		targetPriors =  model->getPriors(i); numberOfNewTargets = targetPriors.size();
