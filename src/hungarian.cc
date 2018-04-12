@@ -28,7 +28,6 @@ double hungarianCost(Matrix<double> perf) {
 	} // for
 	
 
-
 	bool exitFlag = true;
 	unsigned stepNumber = 1;
 

@@ -340,7 +340,7 @@ void printOspaTrials(std::vector<std::vector<std::vector<ColVector<double>>>> os
 	unsigned numberOfSimulationsPerTrial = ospa[0].size();
 	
 	std::ofstream trialFile;
-	trialFile.open("matlab/data/detectionTrials.csv");
+	trialFile.open("matlab/data/jpdafClutterTrials.csv");
 
 	trialFile << numberOfTrials << "\n";
 	trialFile << numberOfSimulationsPerTrial << "\n";

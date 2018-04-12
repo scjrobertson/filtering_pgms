@@ -21,10 +21,10 @@
  */
 int main(int, char *argv[]) {
 
-	unsigned numberOfTrials = 21;
-	std::vector<double> variable(numberOfTrials);
-	for (unsigned i = 0; i < numberOfTrials; i++) variable[i] = 0.05*(i);
-	variable[20] = 0.99;
+	unsigned numberOfTrials = 40;
+	std::vector<unsigned> variable(numberOfTrials);
+	for (unsigned i = 0; i < numberOfTrials; i++) variable[i] = 5*(i+1);
+	//variable[20] = 0.99;
 
 	unsigned numberOfSimulationsPerTrial = 5000;
 	std::vector<std::vector<std::vector<ColVector<double>>>> ospa(numberOfTrials);
@@ -33,17 +33,21 @@ int main(int, char *argv[]) {
 		std::cout << "\nTrial " << i << std::endl;
 		ospa[i].resize(numberOfSimulationsPerTrial);
 		for (unsigned j = 0; j < numberOfSimulationsPerTrial; j++) {
-			std::cout << "Trial " << i << ", Variable: " << variable[i] << ", Simulation: " << j << std::endl;
+			std::cout << "\nTrial " << i << ", Variable: " << variable[i] << ", Simulation: " << j << std::endl;
 			// Declare model;
-			rcptr<LinearModel> model = uniqptr<LinearModel>(new LinearModel(20, variable[i]));
+			//std::cout << "Declare mode and generate groundTruth" << std::endl;
+			rcptr<LinearModel> model = uniqptr<LinearModel>(new LinearModel(variable[i], 0.95));
 			
 			// Load the ground truth
+			//std::cout << "Get ground truth" << std::endl;
 			std::vector<std::vector<rcptr<filters::gmm>>> groundTruthBeliefs = model->getGroundTruthBeliefs();
 
 			// Run the filter
+			//std::cout << "Run filter" << std::endl;
 			std::vector<std::vector<rcptr<filters::gmm>>> stateEstimates = runLinearGaussianFilter(model);
 
 			// Calculate the OSPA
+			//std::cout << "Calculate OSPA" << std::endl;
 			ospa[i][j] = calculateOspa(model, groundTruthBeliefs, stateEstimates);
 
 			if (i == 0 && j == 0) {

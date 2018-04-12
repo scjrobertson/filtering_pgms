@@ -1,5 +1,7 @@
 #include "algorithmic_steps.hpp"
 #include <math.h>
+#include <limits>
+#include <algorithm>
 
 #include <map>
 #include "factor.hpp"
@@ -33,20 +35,11 @@ std::vector<std::vector<rcptr<filters::gmm>>> runLinearGaussianFilter(rcptr<Line
 		std::vector< std::vector<rcptr<filters::gmm>>> updateOptions = createUpdateOptionsLinear(model, predictedStates, 
 				kalmanComponents, measurements[i]);
 		Matrix<double> associationMatrix = createAssociationMatrix(model, measurements[i].size(), updateOptions);
-		Matrix<double> updatedAssociations = loopyBeliefUpdatePropagation(model, associationMatrix);
-		
-		/*
-		Matrix<double> spoof = gLinear::zeros<double>(associationMatrix.rows(), associationMatrix.cols()); spoof.assignToAll(1.0);
-		for (unsigned i = 0; i < associationMatrix.rows(); i++) {
-			double rowNorm = 0.0;
-			for (unsigned j = 0; j < associationMatrix.cols(); j++) rowNorm += associationMatrix(i, j);
-			for (unsigned j = 0; j < associationMatrix.cols(); j++) associationMatrix(i, j) /= rowNorm;
-		} // for
-		*/
+		//Matrix<double> updatedAssociations = loopyBeliefUpdatePropagation(model, associationMatrix);
+		Matrix<double> updatedAssociations = loopyBeliefPropagation(model, associationMatrix);
 
 		// Measurement Updates
 		targets[i] = updateTargetStatesLinear(model, updateOptions, associationMatrix, updatedAssociations);
-		//targets[i] = updateTargetStatesLinear(model, updateOptions, spoof, associationMatrix);
 
 		// Add in new targets
 		targetPriors =  model->getPriors(i); numberOfNewTargets = targetPriors.size();
@@ -135,7 +128,7 @@ std::vector< std::vector<rcptr<filters::gmm>>> createUpdateOptionsLinear(rcptr<L
 	unsigned numberOfMeasurements = z.size();
 	std::vector<std::vector<rcptr<filters::gmm>>> updateOptions(numberOfTargets);
 
-	double priorProb = (1.0)/(model->lambda + model->detectionProbability*(numberOfMeasurements - model->lambda));
+	//double priorProb = (1.0)/(model->lambda + model->detectionProbability*(numberOfMeasurements - model->lambda));
 
 	for (unsigned i = 0; i < numberOfTargets; i++) {
 		unsigned numberOfMixtureComponents = (predictedStates[i]->w).size();
@@ -148,8 +141,9 @@ std::vector< std::vector<rcptr<filters::gmm>>> createUpdateOptionsLinear(rcptr<L
 		(predictedComponent->S).resize(numberOfMixtureComponents);
 
 		for (unsigned j = 0; j < numberOfMixtureComponents; j++) {
-			predictedComponent->w[j] = (model->lambda)*(1 - model->detectionProbability)*(priorProb)*
-				(predictedStates[i]->w[j])/(model->observationSpaceVolume);
+			//predictedComponent->w[j] = (model->lambda)*(1 - model->detectionProbability)*(priorProb)*
+			//	(predictedStates[i]->w[j])/(model->observationSpaceVolume);
+			predictedComponent->w[j] = (1 - model->detectionProbability)*(predictedStates[i]->w[j]);
 			predictedComponent->mu[j] = predictedStates[i]->mu[j];
 			predictedComponent->S[j] = predictedStates[i]->S[j];
 		} // for
@@ -166,7 +160,8 @@ std::vector< std::vector<rcptr<filters::gmm>>> createUpdateOptionsLinear(rcptr<L
 				ColVector<double> difference = z[j] - kalmanComponents[i]->z[k];
 				double likelihood = exp(-0.5*(difference.transpose()*(kalmanComponents[i]->P[k])*difference));
 
-				updatedComponent->w[k] = (model->detectionProbability)*(priorProb)*(kalmanComponents[i]->w[k])*(likelihood);
+				//updatedComponent->w[k] = (model->detectionProbability)*(priorProb)*(kalmanComponents[i]->w[k])*(likelihood);
+				updatedComponent->w[k] = (model->detectionProbability)*(kalmanComponents[i]->w[k])*(likelihood);
 				updatedComponent->mu[k] = kalmanComponents[i]->mu[k] + kalmanComponents[i]->K[k]*z[j];
 				updatedComponent->S[k] = kalmanComponents[i]->S[k];
 			} // for
@@ -193,6 +188,81 @@ Matrix<double> createAssociationMatrix(rcptr<LinearModel> linearModel,
 
 	return associationMatrix;
 } // createAssociationMatrix()
+
+Matrix<double> loopyBeliefPropagation (rcptr<LinearModel> model,
+		Matrix<double> associationMatrix,
+		double tolerance,
+		unsigned maxIterations) {
+
+	unsigned numberOfTargets = associationMatrix.rows();
+	unsigned numberOfMeasurements = associationMatrix.cols() - 1;
+
+	// Normalise
+	unsigned numberOfOptions = numberOfMeasurements+1;
+	Matrix<double> wUpdate = 1.0*associationMatrix; //Matrix<double>(numberOfTargets, numberOfOptions); 
+	/*
+	for (unsigned i = 0 ; i < numberOfTargets; i++) {
+		double rowWeight = 0.0;
+		for (unsigned j = 0; j < numberOfOptions; j++) rowWeight += associationMatrix(i, j);
+		for (unsigned j = 0; j < numberOfOptions; j++) wUpdate(i, j) = associationMatrix(i, j)/rowWeight;
+	}
+	*/
+
+	//std::cout << wUpdate << std::endl;
+
+	Matrix<double> mu = Matrix<double>(numberOfTargets, numberOfMeasurements); mu.assignToAll(1.0);
+	Matrix<double> muOld = gLinear::zeros<double>(numberOfTargets, numberOfMeasurements);
+	Matrix<double> nu = gLinear::zeros<double>(numberOfTargets, numberOfMeasurements);
+	
+	Matrix<double> pUpdated = gLinear::zeros<double>(numberOfTargets, numberOfMeasurements + 1);
+	ColVector<double> wNew = ColVector<double>(numberOfMeasurements); wNew.assignToAll(1.0/model->observationSpaceVolume);
+	
+	double difference = std::numeric_limits<double>::infinity();
+	unsigned counter = 0;
+	while (difference > tolerance || counter < maxIterations) {
+		muOld = 1.0*mu;
+
+		for (unsigned i = 0; i < numberOfTargets; i++) {
+			ColVector<double> pred = ColVector<double>(numberOfMeasurements); pred.assignToAll(0.0);
+			double sumPred = wUpdate(i, 0);
+			for (unsigned j = 0; j < numberOfMeasurements; j++) {
+				pred[j] = wUpdate(i, j+1)*mu(i, j);
+				sumPred += pred[j];
+			} // for
+			if (std::isnan(sumPred)) {
+				std::cout << wUpdate << std::endl;
+			}
+			for (unsigned j = 0; j < numberOfMeasurements; j++) nu(i, j) = wUpdate(i, j+1)/(sumPred - pred[j]);
+		} // for
+
+		for (unsigned i = 0; i < numberOfMeasurements; i++) {
+			double sumPred = wNew[i];
+			for (unsigned j = 0; j < numberOfTargets; j++) sumPred += nu(j, i);
+			for (unsigned j = 0; j < numberOfTargets; j++) mu(j, i) = 1/(sumPred - nu(j, i));
+		} // for
+		
+		counter++;
+		Matrix<double> differenceMatrix = mu - muOld; double max = -1;
+		for (unsigned i = 0; i < numberOfTargets; i++) {
+			for (unsigned j = 0; j < numberOfMeasurements; j++) max = std::max(max, fabs(differenceMatrix(i, j)));
+		} // for
+		difference = max;
+	} // if
+
+	//std::cout << mu << std::endl;
+
+	for (unsigned i = 0; i < numberOfTargets; i++) {
+		double sumPred = wUpdate(i, 0);
+		for (unsigned j = 0; j < numberOfMeasurements; j++) sumPred += wUpdate(i, j+1)*mu(i, j);
+		pUpdated(i, 0) = wUpdate(i, 0)/sumPred;	
+		for (unsigned j = 0; j < numberOfMeasurements; j++) pUpdated(i, j+1) =  wUpdate(i, j+1)*mu(i, j)/sumPred;
+	} // for
+
+
+	//std::cout << "pUpdated: " << pUpdated << std::endl;
+
+	return pUpdated;
+} // loopyBeliefPropagation()
 
 Matrix<double> loopyBeliefUpdatePropagation (rcptr<LinearModel> linearModel,
 		Matrix<double> associationMatrix) {

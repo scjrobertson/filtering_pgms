@@ -39,9 +39,9 @@ LinearModel::LinearModel(unsigned clutterRate, double sensorDetectionProbability
 	simulationLength = 50;
 
 	// Birth locations
-	birthTimes = {0};
-	deathTimes = {50};
-	targetPriors.resize(1);
+	birthTimes = {0, 0};
+	deathTimes = {50, 50};
+	targetPriors.resize(2);
 
 	// Target 1
 	targetPriors[0] = uniqptr<filters::gmm>(new filters::gmm);
@@ -59,21 +59,19 @@ LinearModel::LinearModel(unsigned clutterRate, double sensorDetectionProbability
 	targetPriors[0]->S[0](2, 2) = 9.0; targetPriors[0]->S[0](3, 3) = 9.0;
 	
 	// Target 2
-	/*
 	targetPriors[1] = uniqptr<filters::gmm>(new filters::gmm);
 	targetPriors[1]->id = 1;
 	targetPriors[1]->w = {1.0};
 	
 	(targetPriors[1]->mu).resize(1);
 	targetPriors[1]->mu[0] = ColVector<double>(xDimension);
-	targetPriors[1]->mu[0][0] = -30.0; targetPriors[1]->mu[0][1] = 30.0;
-	targetPriors[1]->mu[0][2] = 2.0; targetPriors[1]->mu[0][3] = -2.0;
+	targetPriors[1]->mu[0][0] = -40.0; targetPriors[1]->mu[0][1] = -40.0;
+	targetPriors[1]->mu[0][2] = 2.0; targetPriors[1]->mu[0][3] = 2.0;
 
 	(targetPriors[1]->S).resize(1);
 	targetPriors[1]->S[0] = gLinear::zeros<double>(xDimension, xDimension);
 	targetPriors[1]->S[0](0, 0) = 9.0; targetPriors[1]->S[0](1, 1) = 9.0;
 	targetPriors[1]->S[0](2, 2) = 9.0; targetPriors[1]->S[0](3, 3) = 9.0;
-	*/
 	
 	// Meaurement model
 	C = gLinear::zeros<double>(zDimension, xDimension);

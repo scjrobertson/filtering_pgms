@@ -18,7 +18,6 @@ std::vector<ColVector<double>> calculateOspa(rcptr<LinearModel> model,
 	for (unsigned i = rhsSize; i < ospaLength; i++) rhs.push_back( std::vector<rcptr<filters::gmm>>() );
 	for (unsigned i = 0; i < ospaLength; i++) ospa[i] = calculateOspa(lhs[i], rhs[i], model->ospaC, model->ospaP);
 
-
 	return ospa;
 } //  calculateOspa
 
@@ -51,7 +50,9 @@ ColVector<double> calculateOspa(std::vector<rcptr<filters::gmm>> lhs,
 		} // for
 	} // for
 
+	//std::cout << "distanceMatrix: " << distanceMatrix << std::endl;
 	double minimumCost = hungarianCost(distanceMatrix);
+	//std::cout << "minimumCost: " << minimumCost << std::endl;
 
 	unsigned maxSize = std::max(rhsSize, lhsSize);
 	ospaComponents[0] = pow((1.0/maxSize)*( pow(cParameter, pParameter)*abs(rhsSize-lhsSize) + minimumCost), 1.0/pParameter );

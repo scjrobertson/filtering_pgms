@@ -24,6 +24,11 @@ Matrix<double> createAssociationMatrix(rcptr<LinearModel> model,
 		unsigned numberOfMeasurements,
 		std::vector<std::vector<rcptr<filters::gmm>>> updateOptions);
 
+Matrix<double> loopyBeliefPropagation(rcptr<LinearModel> model,
+		Matrix<double> associationMatrix,
+		double tolerance = 1e-6,
+		unsigned maxIterations = 200);
+
 Matrix<double> loopyBeliefUpdatePropagation(rcptr<LinearModel> model,
 		Matrix<double> associationMatrix);
 
