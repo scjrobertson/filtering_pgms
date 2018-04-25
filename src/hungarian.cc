@@ -36,7 +36,9 @@ double hungarianCost(Matrix<double> perf) {
 	Matrix<unsigned> mask = Matrix<unsigned>();
 	std::map<unsigned, unsigned> zRow, zCol;
 
-	while(exitFlag) {
+	unsigned counter = 0;
+
+	while(exitFlag && counter < 1000) {
 		//std::cout << "StepNumber: " << stepNumber << std::endl;
 		switch(stepNumber) {
 			case 1:
@@ -65,6 +67,7 @@ double hungarianCost(Matrix<double> perf) {
 				exitFlag = false;
 				break;
 		} // switch
+		counter++;
 	} // while
 
 	double assignmentCost = 0.0;
@@ -151,8 +154,9 @@ void hungarianStepFour(Matrix<double> & pCond,
 	bool zFlag = true;
 
 	zRow.clear(); zCol.clear();
+	unsigned counter = 0;
 
-	while(zFlag) {
+	while(zFlag && counter < 1000) {
 		int row = -1; int col = -1;
 		bool exitFlag = true;
 		unsigned i = 0; unsigned j = 0;
@@ -197,6 +201,7 @@ void hungarianStepFour(Matrix<double> & pCond,
 				zCol[0] = col;
 			} // if
 		} // if
+		counter++;
 	} // while
 } // stepFour()
 
@@ -211,7 +216,8 @@ void hungarianStepFive(Matrix<unsigned> & mask,
 
 	bool zFlag = true;
 	unsigned i = 0;
-	while (zFlag) {
+	unsigned counter = 0;
+	while (zFlag && counter < 1000) {
 		int rowIndex = -1;
 		for (unsigned j = 0; j < pSize; j++) if ( mask(j, zCol[i]) == 1 ) rowIndex = j;
 
@@ -230,6 +236,7 @@ void hungarianStepFive(Matrix<unsigned> & mask,
 			zRow[i] = zRow[i-1];
 			zCol[i] = (unsigned) columnIndex;
 		} // if
+		counter++;
 	} // while
 
 	for (unsigned i = 0; i < zRow.size(); i++) {
