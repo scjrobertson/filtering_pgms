@@ -73,7 +73,7 @@ maximumCardinality = max(max(groundTruth.cardinality), max(stateEstimates.cardin
 
 set(gca,'ytick',0:maximumCardinality+1);
 xlabel('t(s)'); ylabel('Cardinality');
-set(gca, 'XLim',[0 simulationLength-1]); set(gca, 'YLim',[0 (maximumCardinality + 1)]);
+set(gca, 'XLim',[0 model.T*(simulationLength-1)]); set(gca, 'YLim',[0 (maximumCardinality + 1)]);
 legend(gca,'True Cardinality','Estimated Cardinality');
 %% Risk plotting measurements
 if plotMeasurements == true
@@ -129,7 +129,9 @@ if plotMeasurements == true
     end
     % State Estimates
     for i = 1:simulationLength
-        estimateLine = line(model.T*(i-1), projectedStateEstimate{i}(1, :), 'LineStyle','none','Marker','*','Markersize',12,'Color', 'red');
+        if ~isempty(projectedStateEstimate{i})
+            estimateLine = line(model.T*(i-1), projectedStateEstimate{i}(1, :), 'LineStyle','none','Marker','*','Markersize',12,'Color', 'red');
+        end
     end
     % Limits
     xlabel('t (s)'); ylabel('y (m)');
@@ -152,7 +154,9 @@ if plotMeasurements == true
     end
     % State Estimates
     for i = 1:simulationLength
-        estimateLine = line(model.T*(i-1), projectedStateEstimate{i}(2, :), 'LineStyle','none','Marker','*','Markersize',12,'Color', 'red');
+        if ~isempty(projectedStateEstimate{i})
+            estimateLine = line(model.T*(i-1), projectedStateEstimate{i}(2, :), 'LineStyle','none','Marker','*','Markersize',12,'Color', 'red');
+        end
     end
     % Limits
     xlabel('t (s)'); ylabel('y (m)');
