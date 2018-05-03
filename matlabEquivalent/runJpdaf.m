@@ -1,11 +1,12 @@
 % Run the approximate Jpdaf
 close all; clc;
 addpath common statisticsToolBox;
+warning off; %% Right division is iffy - sometimes
 %% Load the model
-model = generateModel(2, 0.95);
+model = generateModel(6, 0.98);
 %% Generate the ground truth
 [targetPriors, groundTruth, measurements] = generateGroundTruth(model);
 %% Run the filter
-[stateEstimates, cardinalityEstimates] = runFilter(model, targetPriors, measurements);
+stateEstimates = runFilter(model, targetPriors, measurements);
 %% Plot results
-%plotResults(model, groundTruth, measurements, cardinalityEstimate)
+plotResults(model, groundTruth, stateEstimates, measurements, false)

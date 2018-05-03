@@ -40,8 +40,8 @@ model.Q = q0*eye(model.zDimension);
 %% Detection probability
 model.detectionProbability = detectionProbability;
 %% Observation space
-model.observationSpaceLimits = [-100 100; -100 100];
-model.observationSpaceVolume = 4e4;
+model.observationSpaceLimits = 500*[-1 1; -1 1];
+model.observationSpaceVolume = prod(model.observationSpaceLimits(:, 2) - model.observationSpaceLimits(:, 1));
 model.clutterRate = clutterRate;
 %% OSPA parameters
 model.ospaP = 2;

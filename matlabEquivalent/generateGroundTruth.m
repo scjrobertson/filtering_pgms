@@ -14,12 +14,12 @@ function [targetPriors, groundTruth, measurements] = generateGroundTruth(model)
 %       model - struct. The struct created by the function generateModel.
 %
 %   Outputs
-%       targetPriors - struct. A struct with the following fields.
+%       targetPriors - struct. A struct with the following fields:
 %           birthsTimes - (1, n) array. The targets' birth times.
 %           deathTimes - (1, n) array. The targets' death times.
 %           means - (d, n) array. The targets' prior means.
 %           covariance - (d, d, n) array. The targets' prior 
-%       groundTruth - struct. A structure with the following fields.
+%       groundTruth - struct. A structure with the following fields:
 %           trajectories - (1, n) cell. A cell containing an array
 %               for each ground truth trajectory.
 %           means - (1, m) cell. Contains the Kalman filter belief
@@ -32,27 +32,23 @@ function [targetPriors, groundTruth, measurements] = generateGroundTruth(model)
 %           target-generated and clutter generated measurements -- for each
 %           time-step of the simulation.
 %% Simulation length
-simulationLength = 50;
+simulationLength = 80;
 %% Target birth and death times
-numberOfTargets = 4;
-targetPriors.birthTimes = [1 1 1 1];
-targetPriors.deathTimes = [50 50 50 50];
+numberOfTargets = 30;
+targetPriors.birthTimes = ones(1, numberOfTargets);
+targetPriors.deathTimes = simulationLength*ones(1, numberOfTargets);
 %% Noise parameters
 noiseMean = zeros(model.zDimension, 1);
-noiseCovariance = (2^2)*eye(model.zDimension);
+noiseCovariance = (1^2)*eye(model.zDimension);
 %% Target Priors
 % Means
-targetPriors.means = zeros(model.xDimension, numberOfTargets);
-targetPriors.means(:, 1) = [-40; 40; 1; -2];
-targetPriors.means(:, 2) = [-40; -40; 2; 2];
-targetPriors.means(:, 3) = [40; 40; -1; -2];
-targetPriors.means(:, 4) = [40; 40; -2; 2];
+positions = model.observationSpaceLimits(:, 1) + ...
+    2*model.observationSpaceLimits(:, 2).*rand(model.xDimension/2, numberOfTargets);
+velocities = randi([-2 2], [2 numberOfTargets]) + randn([2 numberOfTargets]);
+targetPriors.means = [positions; velocities];
 % Covariance
-targetPriors.covariances = zeros(model.xDimension, model.xDimension, numberOfTargets);
-targetPriors.covariances(:, :, 1)  = (1^2)*eye(model.xDimension);
-targetPriors.covariances(:, :, 2)  = (1^2)*eye(model.xDimension);
-targetPriors.covariances(:, :, 3)  = (1^2)*eye(model.xDimension);
-targetPriors.covariances(:, :, 4)  = (1^2)*eye(model.xDimension);
+covarianceMatrix = 0.5*eye(model.xDimension);
+targetPriors.covariances = reshape(repmat(covarianceMatrix, [1 numberOfTargets]), [model.xDimension model.xDimension numberOfTargets]);
 %% Preallocate variables
 measurements = cell(1, simulationLength);
 groundTruth.means = cell(1, simulationLength);
@@ -69,7 +65,7 @@ end
 for i = 1:numberOfTargets
     lifeSpan = targetPriors.deathTimes(i) - (targetPriors.birthTimes(i)-1);
     groundTruth.trajectories{i} = zeros(model.xDimension+1, lifeSpan); 
-    groundTruth.trajectories{i}(1, :) = model.T*(targetPriors.birthTimes(i):targetPriors.deathTimes(i));
+    groundTruth.trajectories{i}(1, :) = model.T*(targetPriors.birthTimes(i)-1:targetPriors.deathTimes(i)-1);
     groundTruth.trajectories{i}(2:end, 1) = targetPriors.means(:, i);
     %% Initialise the track
     absoluteTime = targetPriors.birthTimes(i);

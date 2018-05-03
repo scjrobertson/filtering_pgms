@@ -1,4 +1,33 @@
-function [stateEstimates, cardinalityEstimates] = runFilter(model, targetPriors, measurements)
+function stateEstimates = runFilter(model, targetPriors, measurements)
+% RUNFILTER -- Estimates the target's states using approximate JPDAF
+%   stateEstimates = runFilter(model, targetPriors, measurements)
+%
+%   Runs an approximate JPDAF - it resolves the data association by way of
+%   loopy belief propagation. This implementation avoid for loops and is
+%   not very readable. Using matrices instead of 3D arrays throughout would
+%   probably be more efficient.
+%
+%   See also generateModel, generateGroundTruth, loopyBeliefPropagation 
+%   and plotResults.
+%
+%   Inputs
+%       model - struct. The struct declared in generateModel, it has fields
+%           describing the linear motion and measurement models, etc.
+%       targetPriors - struct. A struct with the following fields:
+%           birthsTimes - (1, n) array. The targets' birth times.
+%           deathTimes - (1, n) array. The targets' death times.
+%           means - (d, n) array. The targets' prior means.
+%           covariance - (d, d, n) array. The targets' prior       
+%       measurements - (1, m) cell. Contains the measurements --
+%           target-generated and clutter generated measurements -- for each
+%           time-step of the simulation.
+%   Output
+%       stateEstimates - struct. A structure with the following fields.
+%           means - (1, m) cell. Contains the state estimates means.
+%           covariances - (1, m) cell. Contains the state estimates
+%               covariance matrices.
+%           cardinality - (1, m) array. The estimated number of targets present at each
+%               time-step of the simulation.
 %% Admin
 simulationLength = size(measurements, 2);
 I = eye(model.xDimension);
@@ -7,8 +36,12 @@ targetLabels = find(targetPriors.birthTimes == 1);
 mu = targetPriors.means(:, targetLabels);
 S = targetPriors.covariances(:, :, targetLabels);
 targetNumber = size(targetLabels, 2);
+%% State estimates
+stateEstimates.means = cell(1, simulationLength); stateEstimates.means{1} = mu;
+stateEstimates.covariances = cell(1, simulationLength); stateEstimates.covariances{1} = S;
+stateEstimates.cardinality = zeros(1, simulationLength); stateEstimates.cardinality(1) = targetNumber;
 %% Run the filter
-for i = 2:2%simulationLength
+for i = 2:simulationLength
     %% Predict the targets' states
     muPred = model.A*mu + model.u;
     SPred =  quadraticMultiprod(S, model.A, model.Atranspose, model.xDimension, targetNumber) + model.R; % SPred = A*S*A' + R
@@ -32,31 +65,32 @@ for i = 2:2%simulationLength
     ZInvStacked = repmat(reshape(ZInv, [model.zDimension model.zDimension*targetNumber]), [1 numberOfMeasurements]);
     ZInvShaped = reshape(ZInvStacked, [model.zDimension model.zDimension targetNumber numberOfMeasurements]);
     leftProduct = sum(bsxfun(@times, ZInvShaped, difference), 2);
-    rightProduct = sum(difference.*leftProduct, 1);
-    associationMatrix(:, 2:end) = exp(-0.5*squeeze(rightProduct)).*repmat(normalisingConstants, [1 numberOfMeasurements]);
+    rightProduct = reshape(sum(difference.*leftProduct, 1), [targetNumber numberOfMeasurements]);
+    associationMatrix(:, 2:end) = repmat(normalisingConstants, [1 numberOfMeasurements]).*exp(-0.5*rightProduct);
     %% Loopy Belief Propagation
     clutterLikelihoods = ones(1, numberOfMeasurements)/model.observationSpaceVolume;
     [updatedAssociationMatrix, ~] = loopyBeliefPropagation(associationMatrix, clutterLikelihoods, 10e-6, 200);
-    %% Updated States
-    missedDetectionProbabilities = reshape(updatedAssociationMatrix(:, 1), [1 1 targetNumber]);
+    %% Update states
     % Means
-    muPredReshaped = reshape(muPred, [model.xDimension 1 targetNumber]);
-    innovation = sum(bsxfun(@times, K, permute(difference, [2 1 3 4])), 2);
-    muUpdated = muPredReshaped + reshape(innovation, [model.xDimension numberOfMeasurements targetNumber]);
-    mu = bsxfun(@times, missedDetectionProbabilities, muPredReshaped) + sum(bsxfun(@times, updatedAssociationMatrix(:, 2:end), muUpdated), 2);
+    associationProbabilties =  permute(reshape(updatedAssociationMatrix, [1 targetNumber numberOfMeasurements+1]), [1 3 2]);
+    missedDetectionProbabilities = associationProbabilties(1, 1, :);
+    muUpdated = zeros([model.xDimension 1 targetNumber numberOfMeasurements+1]);
+    muUpdated(:, :, :, 1) = reshape(muPred, [model.xDimension 1 targetNumber]);
+    muUpdated(:, :, :, 2:end) = muUpdated(:, :, :, 1) + sum(bsxfun(@times, K, permute(difference, [2 1 3 4])), 2);
+    if targetNumber == 1; mu = sum(bsxfun(@times, squeeze(muUpdated), associationProbabilties), 2);
+    else; mu = sum(bsxfun(@times, permute(squeeze(muUpdated), [1 3 2]), associationProbabilties), 2); end
     % Covariance matrices
-    postiveDefiniteComponent = bsxfun(@times, missedDetectionProbabilities, SPred) + bsxfun(@times, 1- missedDetectionProbabilities, SUpdated);
+    muShift = permute(muUpdated - mu, [1 2 4 3]);
+    outerProduct = bsxfun(@times, muShift, permute(muShift, [2 1 3 4]));
+    associationProbabiltiesReshaped = reshape(associationProbabilties, [1 1 numberOfMeasurements+1 targetNumber]);
+    rankOneMatrices = squeeze(sum(bsxfun(@times, associationProbabiltiesReshaped, outerProduct), 3));
+    positiveDefiniteComponents = bsxfun(@times, missedDetectionProbabilities, SPred) + bsxfun(@times, 1- missedDetectionProbabilities, SUpdated);
     %% Reassign
     mu = reshape(mu, [model.xDimension targetNumber]);
-    S = SPred
+    S = rankOneMatrices + positiveDefiniteComponents;
+    %% Save the data
+    stateEstimates.means{i} = mu;
+    stateEstimates.covariances{i} = S;
+    stateEstimates.cardinality(i) = size(mu, 2);
 end
-stateEstimates = 0;
-cardinalityEstimates = zeros(1, simulationLength);
 end
-
-%rProbPacked = reshape(rProbability, [1 1 numberOfMeasurements]);
-%difference = jpdafTrackerManager.x(:, i) - jpdafTrackerManager.updatedX(:, i, :);
-%differencePermuted = permute(difference, [2 1 3]);
-%rankOneMatrices = sum(multiprod(multiprod(difference, differencePermuted), rProbPacked), 3);
-%positiveDefiniteMatrices = rProbability(1)*jpdafTrackerManager.updatedS(:, :, i, 1) + (1-rProbability(1))*jpdafTrackerManager.updatedS(:, :, i, 2);
-%jpdafTrackerManager.S(:, :, i) = rankOneMatrices + positiveDefiniteMatrices;
