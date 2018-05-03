@@ -21,7 +21,7 @@ function [pdafUpdated, clutterUpdated] = loopyBeliefPropagation(pdafLikelihoods,
 %       pdafUpdated - (n, m+1) matrix. The resolved pdaf probabilities.
 %       clutterUpdated - (n, m) vector. The resolved pdaf probabilities.
 %% Determine shape of the data
-[numberOfTargets, numberOfUpdateOptions] = size(pdaf);
+[numberOfTargets, numberOfUpdateOptions] = size(pdafLikelihoods);
 numberOfMeasurements = numberOfUpdateOptions - 1;
 %% Declare the variables
 mu = ones(numberOfTargets, numberOfMeasurements);
@@ -43,7 +43,7 @@ while( max(abs(mu(:) - muOld(:))) > covergenceTolerance && counter < maximumNumb
     
     
     for i = 1:numberOfMeasurements
-        normalisingConstant = clutterLikelihoods + sum(nu(:, i));
+        normalisingConstant = clutterLikelihoods(i) + sum(nu(:, i));
         mu(:, i) = 1./(normalisingConstant - nu(:, i));
     end
     
@@ -58,6 +58,6 @@ end
 
 for i = 1:numberOfMeasurements
    normalisingConstant = clutterLikelihoods(i) + sum(nu(:, i)); 
-   clutterUpdated(i) = pdafUpdate(i)/normalisingConstant;
+   clutterUpdated(i) = pdafUpdated(i)/normalisingConstant;
 end
 end

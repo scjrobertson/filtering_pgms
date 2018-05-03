@@ -1,5 +1,11 @@
 % Run the approximate Jpdaf
+close all; clc;
+addpath common statisticsToolBox;
 %% Load the model
-model = generateModel(20, 0.95);
+model = generateModel(2, 0.95);
 %% Generate the ground truth
-[groundTruthTrajectories, groundTruthMeans, groundTruthCovariances, cardinality] = generateGroundTruth(model);
+[targetPriors, groundTruth, measurements] = generateGroundTruth(model);
+%% Run the filter
+[stateEstimates, cardinalityEstimates] = runFilter(model, targetPriors, measurements);
+%% Plot results
+%plotResults(model, groundTruth, measurements, cardinalityEstimate)

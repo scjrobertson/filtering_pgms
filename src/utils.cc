@@ -251,7 +251,7 @@ void outputResults(rcptr<LinearModel> model,
 
 	// Write out ground truth
 	std::ofstream groundTruthFile;
-	groundTruthFile.open("matlab/data/simpleGroundTruth.ini");
+	groundTruthFile.open("plotting/data/simpleGroundTruth.ini");
 
 	unsigned numberOfTrajectories = groundTruth.size();
 
@@ -281,7 +281,7 @@ void outputResults(rcptr<LinearModel> model,
 
 	// Write measurements
 	std::ofstream measurementsFile;
-	measurementsFile.open("matlab/data/simpleMeasurements.ini");
+	measurementsFile.open("plotting/data/simpleMeasurements.ini");
 
 	for (unsigned i = 0; i < lengthOfSimulation; i++) {
 		measurementsFile << "[MEASUREMENTS " << i+1 << "]\n";
@@ -297,7 +297,7 @@ void outputResults(rcptr<LinearModel> model,
 
 	// Write out state estimates
 	std::ofstream stateEstimateFile;
-	stateEstimateFile.open("matlab/data/simpleStateEstimates.ini");
+	stateEstimateFile.open("plotting/data/simpleStateEstimates.ini");
 	
 	unsigned simulationLength = stateEstimates.size();
 	for (unsigned i = 0; i < simulationLength; i++) {
@@ -319,7 +319,7 @@ void outputResults(rcptr<LinearModel> model,
 
 	// Write out state estimates
 	std::ofstream ospaFile;
-	ospaFile.open("matlab/data/simpleOspaResults.ini");
+	ospaFile.open("plotting/data/simpleOspaResults.ini");
 
 	ospaFile << "[OSPA]\n";
 	ospaFile << "ospa = ";
@@ -340,7 +340,7 @@ void printOspaTrials(std::vector<std::vector<std::vector<ColVector<double>>>> os
 	unsigned numberOfSimulationsPerTrial = ospa[0].size();
 	
 	std::ofstream trialFile;
-	trialFile.open("matlab/data/jpdafClutterTrials.csv");
+	trialFile.open("plotting/data/jpdafClutterTrials.csv");
 
 	trialFile << numberOfTrials << "\n";
 	trialFile << numberOfSimulationsPerTrial << "\n";
