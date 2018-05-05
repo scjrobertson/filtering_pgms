@@ -15,7 +15,6 @@ function [Matching,Cost] = Hungarian(Perf)
 
 % Written by: Alex Melin 30 June 2006
 
-
  % Initialize Variables
  Matching = zeros(size(Perf));
 

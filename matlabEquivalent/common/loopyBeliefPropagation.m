@@ -4,7 +4,8 @@ function [pdafUpdated, clutterUpdated] = loopyBeliefPropagation(pdafLikelihoods,
 %   [pdafUpdated, clutterUpdated] = loopyBeliefPropagation(pdafLikelihoods,
 %   clutterLikelihoods, covergenceTolerance, maximumNumberOfIterations)
 %
-%   Code originally written by Jason Williams.
+%   Code originally written by Jason Williams; however, it has been
+%   vectorised.
 %
 %   Inputs
 %       pdafLikelihoods - (n, m+1) matrix. The pdaf likelihoods for each of n
@@ -29,35 +30,26 @@ muOld = zeros(numberOfTargets, numberOfMeasurements);
 nu = zeros(numberOfTargets, numberOfMeasurements);
 
 pdafUpdated = zeros(numberOfTargets, numberOfUpdateOptions);
-clutterUpdated = zeros(numberOfMeasurements, 1);
 %% Run loopy belief update propagation
 counter = 1;
-while( max(abs(mu(:) - muOld(:))) > covergenceTolerance && counter < maximumNumberOfIterations)
+while(max(abs(mu(:) - muOld(:))) > covergenceTolerance && counter < maximumNumberOfIterations)
     muOld = mu;
-    
-    for i = 1:numberOfTargets
-        detectionLikelihood = pdafLikelihoods(i, 2:end).*mu(i, :);
-        normalisingConstant = pdafLikelihoods(i, 1) + sum(detectionLikelihood);
-        nu(i, :) = pdafLikelihoods(i, 2:end)./(normalisingConstant - detectionLikelihood);
-    end
-    
-    
-    for i = 1:numberOfMeasurements
-        normalisingConstant = clutterLikelihoods(i) + sum(nu(:, i));
-        mu(:, i) = 1./(normalisingConstant - nu(:, i));
-    end
-    
+    %% Update detection likelihoods
+    detectionLikelihoods = pdafLikelihoods(:, 2:end).*mu;
+    normalisingConstants = pdafLikelihoods(:, 1) + sum(detectionLikelihoods, 2);
+    nu = pdafLikelihoods(:, 2:end)./(normalisingConstants - detectionLikelihoods);
+    %% Update clutter likelihoods
+    totalClutterProbabilies = clutterLikelihoods + sum(nu, 1);
+    mu = 1./(totalClutterProbabilies - nu);
+    %% Reset counter
     counter = counter + 1;
 end
 %% Calculate final probabilities
-for i = 1:numberOfTargets
-   normalisingConstant = pdafLikelihoods(i, 1) + sum(pdafLikelihoods(i, 2:end).*mu(i, :));
-   pdafUpdated(i, 1) = pdafLikelihoods(i, 1)/normalisingConstant;
-   pdafUpdated(i, 2:end) = pdafLikelihoods(i, 2:end).*mu(i, :)/normalisingConstant;
-end
+detectionLikelihoods = pdafLikelihoods(:, 2:end).*mu;
+normalisingConstants = pdafLikelihoods(:, 1) + sum(detectionLikelihoods, 2);
+pdafUpdated(:, 1) = pdafLikelihoods(:, 1)./normalisingConstants;
+pdafUpdated(:, 2:end) = detectionLikelihoods./normalisingConstants;
 
-for i = 1:numberOfMeasurements
-   normalisingConstant = clutterLikelihoods(i) + sum(nu(:, i)); 
-   clutterUpdated(i) = pdafUpdated(i)/normalisingConstant;
-end
+totalClutterProbabilies = clutterLikelihoods + sum(nu, 1);
+clutterUpdated = clutterLikelihoods./totalClutterProbabilies;
 end

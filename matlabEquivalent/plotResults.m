@@ -38,7 +38,7 @@ end
 % Hellinger OSPA
 hOspa = zeros(3, simulationLength);
 for i = 1:simulationLength
-    [hOspa(1, i), hOspa(2, i), hOspa(3, i)] = hellingerOspa(groundTruth.means{i}, groundTruth.covariances{i}, ...
+    [hOspa(1, i), hOspa(2, i), hOspa(3, i)] = hellingerOspaSpecific(groundTruth.means{i}, groundTruth.covariances{i}, ...
         stateEstimates.means{i}, stateEstimates.covariances{i}, model.hOspaC, model.ospaP);
 end
 %% Plot OSPA and cardinality vs time
@@ -67,8 +67,8 @@ legend([hOspaLine, hLocalisationLine, hCardinalityLine], 'H-OSPA', 'Localisation
 %% Plot cardinality vs time
 subplot(313); box on; hold on; grid on;
 
-stairs(0:simulationLength-1, groundTruth.cardinality, '-k');
-stairs(0:simulationLength-1, stateEstimates.cardinality, '-.r');
+stairs(ospaTime, groundTruth.cardinality, '-k');
+stairs(ospaTime, stateEstimates.cardinality, '-.r');
 maximumCardinality = max(max(groundTruth.cardinality), max(stateEstimates.cardinality));
 
 set(gca,'ytick',0:maximumCardinality+1);

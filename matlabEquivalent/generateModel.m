@@ -19,7 +19,7 @@ function model = generateModel(clutterRate, detectionProbability)
 model.xDimension = 4;
 model.zDimension = 2;
 %% Sampling period
-model.T = 1;
+model.T = 20e-3;
 %% Linear motion model
 % State transition matrix
 model.A = [ eye(model.xDimension/2) model.T*eye(model.xDimension/2); ...
