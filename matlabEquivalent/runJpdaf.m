@@ -12,4 +12,4 @@ tic; stateEstimates = runFilter(model, targetPriors, measurements); toc;
 profile off;
 profile viewer;
 %% Plot results
-plotResults(model, groundTruth, stateEstimates, measurements, false)
+plotResults(model, groundTruth, stateEstimates, measurements, false);

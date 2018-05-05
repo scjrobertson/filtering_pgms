@@ -1,12 +1,14 @@
-function [dist, varargout] = hellingerOspa(muX, Sxx, muY, Syy, c, p)
+function [euclideanOspa, hellingerOspa] = ospaSpecific(muX, Sxx, muY, Syy, euclideanC, euclideanP, hellingerC, hellingerP)
 % OSPA - Optimal Subpattern Assigment
-%   [dist, varargout] = ospa(X, Y, c, p)
+%   [euclideanOspa, hellingerOspa] = hellingerOspaSpecific(muX, Sxx, muY, Syy, euclideanC, euclideanP, hellingerC, hellingerP)
 %
 %   Compute the distance between two finite sets using the
-%   Schumacher metric. This is a carbon copy of B. Vo's original
-%   implementation.
+%   Schumacher metric. This function calculates both the
+%   Euclidean-OSPA and Hellinger-OSPA betwen a two finite sets of
+%   Gaussian distrubtions. This is not general, it only works for a 
+%   4x4 covariance matrix, but hopefully it is fast.
 %
-%   See also omat, run_gmm_phd.
+%   See also euclideanOspa, hellingerOspa, Hungarian.
 %
 %   Inputs
 %       muX - (d, n) matrix. A finite set of Gaussian means.
@@ -15,48 +17,47 @@ function [dist, varargout] = hellingerOspa(muX, Sxx, muY, Syy, c, p)
 %       muy - (d, n) matrix. A finite set of Gaussian means.
 %       Syy - (d, d, n) matrix. A finite set of Gaussian covariance, in
 %           muY's respective order.
-%       c - double. Cut-off parameter.
-%       p - double. p-parameter of the metric.
+%       euclideanC - double. Cut-off parameter for Euclidean-OSPA.
+%       euclideanP - double. p-parameter for the Euclidean-OSPA.
+%       hellingerC - double. Cut-off parameter for Hellinger-OSPA.
+%       hellingerP - double. p-parameter for the Hellinger-OSPA.
 %
 %   Outputs
-%       dist - double. The measured distance between two sets.
-
-%% Admin - Valid output number
-if nargout ~= 1 && nargout ~=3
-    error('Incorrect number of outputs');
-end
+%       euclideanOSPA - (3, 1) array. The Euclidean-OSPA components.
+%       hellingerOSPA - (3, 1) array. The Hellinger OSPA components.
 %% Case 1 - Both sets are empty
 if isempty(muX) && isempty(muY)
-    dist = 0;
-    
-    if nargout == 3
-        varargout(1)= {0};
-        varargout(2)= {0};
-    end
-    
+    euclideanOspa = zeros(3, 1);
+    hellingerOspa = zeros(3, 1);
     return;
 end
 %% Case 2 - A single set is empty
 if isempty(muX) || isempty(muY)
-    dist = c;
-    
-    if nargout == 3
-        varargout(1)= {0};
-        varargout(2)= {c};
-    end
-    
+    euclideanOspa = [euclideanC; 0; euclideanC];
+    hellingerOspa = [hellingerC; 0; hellingerC];   
     return;
 end
 %% Case 3 - Non-empty sets
 % Calculate sizes of the input point patterns
 [d, n] = size(muX);
 m = size(muY, 2);
+largestCardinality = max(m, n);
+cardinalityDifference = abs(m-n);
 % Vectorise some operations
 muXX = repmat(muX, [1 m]);
 muYY = reshape(repmat(muY,[n 1]), [d n*m]);
 SXX = repmat(Sxx, [1 1 m]);
 SYY = reshape(repmat(reshape(Syy, [d d*n]), [1 m]), [d d n*m]);
-muZZ = reshape(muXX - muYY, [d 1 n m]);
+difference = muXX - muYY;
+%% Euclidean distance
+euclideanDistance = reshape(sqrt(sum((difference).^2)), [n m]);
+euclideanCutOff = min(euclideanC, euclideanDistance).^euclideanP;
+[~, euclideanCost] = Hungarian(euclideanCutOff);
+euclideanOspa(1, 1) = ((1/largestCardinality)*( (euclideanC^euclideanP)*cardinalityDifference + euclideanCost) ) ^(1/euclideanP);
+euclideanOspa(2, 1) = ((1/largestCardinality)*euclideanCost)^(1/euclideanP);
+euclideanOspa(3, 1) = ((1/largestCardinality)*(euclideanC^euclideanP)*cardinalityDifference)^(1/euclideanP);
+%% Hellinger distance
+muZZ = reshape(difference, [d 1 n m]);
 SZZ = SXX + SYY;
 % To speed things up determinants are calculated by "hand".
 detX = reshape(fourByFourDeterminant(SXX), [n m]);
@@ -65,22 +66,18 @@ detZ = reshape(fourByFourDeterminant(SZZ), [n m]);
 % Calculate inverses
 SZZInv = reshape(simplifiedMultinv(SZZ, d, n*m), [d d n m]); % Inverse of SZZ
 leftProduct = sum(bsxfun(@times, SZZInv, muZZ), 2); % Next two lines calculate muZ'*SZZ*muZ
-rightProduct = reshape(sum(muZZ.*leftProduct, 1), [n m]); 
+rightProduct = reshape(sum(muZZ.*leftProduct, 1), [n m]);
 % Calculate Hellinger distance components
 delta = sqrt(sqrt(detX.*detY)./((0.5.^d)*detZ));
 epsilon = exp(-0.25*rightProduct);
-distance = real(sqrt(1 - delta.*epsilon)); %Hellinger distance
+hellingerDistance = real(sqrt(1 - delta.*epsilon)); %Hellinger distance
+hellingerCutOff = min(hellingerC, hellingerDistance).^hellingerP;
 %Compute optimal assignment and cost using the Hungarian algorithm
-[~, cost] = Hungarian(distance);
-
+[~, hellingerCost] = Hungarian(hellingerCutOff);
 %Calculate final distance
-dist = ( 1/max(m,n)*( c^p*abs(m-n) + cost ) ) ^(1/p);
-
-%Output components if called for in varargout
-if nargout == 3
-    varargout(1)= {(1/max(m,n)*cost)^(1/p)};
-    varargout(2)= {(1/max(m,n)*c^p*abs(m-n))^(1/p)};
-end
+hellingerOspa(1, 1) = ((1/largestCardinality)*( (hellingerC^hellingerP)*cardinalityDifference + hellingerCost) ) ^(1/hellingerP);
+hellingerOspa(2, 1) = ((1/largestCardinality)*hellingerCost)^(1/hellingerP);
+hellingerOspa(3, 1) = ((1/largestCardinality)*(hellingerC^hellingerP)*cardinalityDifference)^(1/hellingerP);
 
     function determinant = fourByFourDeterminant(S)
         % FOURBYFOURDETERMINANT - Determines a 4x4xn array's determinant
