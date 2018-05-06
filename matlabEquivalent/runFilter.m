@@ -3,7 +3,7 @@ close all; clc;
 addpath common statisticsToolBox;
 warning off; %% Right division is iffy sometimes.
 %% Load the model
-model = generateModel(20, 0.95);
+model = generateModel(1, 0.95);
 %% Generate the ground truth
 [targetPriors, groundTruth, measurements] = generateGroundTruth(model);
 %% Run the filter

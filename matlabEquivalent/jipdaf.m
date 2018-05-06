@@ -31,7 +31,7 @@ stateEstimates.means = cell(1, simulationLength);
 stateEstimates.covariances = cell(1, simulationLength);
 stateEstimates.cardinality = zeros(1, simulationLength);
 %% Declare state variables
-r = zeros(0); mu = zeros(model.xDimension, 0); S = zeros(model.xDimension, model.xDimension, 0); % Established targets' states
+r = zeros(0, 0); mu = zeros(model.xDimension, 0); S = zeros(model.xDimension, model.xDimension, 0); % Established targets' states
 lambdaU = zeros(0); xU = zeros(model.xDimension, 0); SU = zeros(model.xDimension, model.xDimension, 0); % Poisson point process parameters
 targetNumber = 0;
 %% Run the filter
@@ -40,10 +40,11 @@ for i = 2:simulationLength
     lambdaU = model.PoissonSurvivalProbability*lambdaU;
     survivingPoissonIndices = lambdaU > model.lambdaThreshold;
     lambdaU = lambdaU(survivingPoissonIndices);
+    intensitySize = size(lambdaU, 2);
     xU = model.A*xU(:, survivingPoissonIndices) + model.u;
-    SU = quadraticMultiprod(SU(:, :, survivingPoissonIndices), model.A, model.Atranspose, model.xDimension, targetNumber) + model.R;
+    SU = quadraticMultiprod(SU(:, :, survivingPoissonIndices), model.A, model.Atranspose, model.xDimension, intensitySize) + model.R;
     %% Add tentative spawned targets to the PPP
-    intensitySize = size(lambdaU, 2) + model.numberOfSpawningLocations;
+    intensitySize = intensitySize + model.numberOfSpawningLocations;
     lambdaU(end+1:intensitySize) = model.newTargetProbability;
     xU(:, end+1:intensitySize) = model.spawnMeans;
     SU(:, :, end+1:intensitySize) = model.spawnCovariances;
@@ -65,7 +66,7 @@ for i = 2:simulationLength
         STemp = rightMultiprod(K, model.C, model.xDimension, model.zDimension, model.xDimension, targetNumber);
         SUpdated = simplifiedMultiprod((I - STemp), SPred, model.xDimension, model.xDimension, model.xDimension, targetNumber); % Update covariance matrices
         % Create updated state components
-        associationMatrix = repmat(1 - rPred + rPred*(1-model.detectionProbability), [1 numberOfMeasurements +1]);
+        associationMatrix = repmat(1 - rPred + rPred*(1-model.detectionProbability), [1 numberOfMeasurements+1]);
         rUpdated = ones(targetNumber, numberOfMeasurements+1); rUpdated(:, 1) = rPred./sum(associationMatrix(:, 1));
         muZRep = repmat(muZ, [1 numberOfMeasurements]);
         zRep = reshape(repmat(measurements{i},[targetNumber 1]),[model.zDimension targetNumber*numberOfMeasurements]);
@@ -98,10 +99,11 @@ for i = 2:simulationLength
     leftProduct = sum(bsxfun(@times, ZUInvShaped, intensityDifference), 2);
     rightProduct = reshape(sum(intensityDifference.*leftProduct, 1), [intensitySize numberOfMeasurements]);
     clutterLikelihoodMatrix = repmat(normalisingConstants, [1 numberOfMeasurements]).*exp(-0.5*rightProduct);
-    intensityLikelihoods = sum(clutterLikelihoodMatrix, 1) + model.clutterPerUnitVolume;
+    totalIntensityLikelihoods = sum(clutterLikelihoodMatrix, 1) + model.clutterPerUnitVolume;
+    normalisedIntensityLikelihoods = totalIntensityLikelihoods./sum(totalIntensityLikelihoods, 2);
     %% Update the PPP states
     % Determine means
-    intensityLikelihoods =  clutterLikelihoodMatrix./intensityLikelihoods;
+    intensityLikelihoods =  clutterLikelihoodMatrix./totalIntensityLikelihoods;
     intensityProbabilities = reshape(intensityLikelihoods, [1 intensitySize numberOfMeasurements]);
     xUUpdated = reshape(xU, [model.xDimension 1 intensitySize]) + sum(bsxfun(@times, KU, permute(intensityDifference, [2 1 3 4])), 2);
     xUUpdated = permute(xUUpdated, [1 2 4 3]);
@@ -112,7 +114,8 @@ for i = 2:simulationLength
     outerProduct = bsxfun(@times, xUShift, permute(xUShift, [2 1 3 4]));
     intensityProbabilitiesReshaped = reshape(intensityProbabilities, [1 1 numberOfMeasurements intensitySize]);
     xNew = reshape(xNew, [model.xDimension numberOfMeasurements]);
-    SNew = SUUpdated + squeeze(sum(bsxfun(@times, intensityProbabilitiesReshaped, outerProduct), 3));
+    SUReshaped = permute(repmat(SUUpdated, [1 1 1 numberOfMeasurements]), [1 2 4 3]);
+    SNew = squeeze(sum(bsxfun(@times, intensityProbabilitiesReshaped, SUReshaped), 4)) + squeeze(sum(bsxfun(@times, intensityProbabilitiesReshaped, outerProduct), 4));
     %% Thin the PPP
     lambdaU = (1-model.detectionProbability)*lambdaU;
     significantPoissonIndices = lambdaU > model.lambdaThreshold;
@@ -121,8 +124,10 @@ for i = 2:simulationLength
     SU = SU(:, :, significantPoissonIndices);
     %% Resolve data association by way of loopy belief propagation
     if (targetNumber ~= 0)
-        [updatedAssociationMatrix, intensityLikelihoods] = loopyBeliefPropagation(associationMatrix, intensityLikelihoods, 10e-6, 5);
+        [updatedAssociationMatrix, updatedIntensityLikelihoods] = loopyBeliefPropagation(associationMatrix, totalIntensityLikelihoods, 10e-6, 5);
         %% Update states and compute weak marginals
+        % Existence probability
+        rUpdated(:, 1) = rPred(:, 1).*updatedAssociationMatrix(:, 1);
         % Means
         associationProbabilties =  permute(reshape(updatedAssociationMatrix, [1 targetNumber numberOfMeasurements+1]), [1 3 2]);
         missedDetectionProbabilities = associationProbabilties(1, 1, :);
@@ -140,11 +145,20 @@ for i = 2:simulationLength
         % Reshape and reassign
         mu = reshape(mu, [model.xDimension targetNumber]);
         S = rankOneMatrices + positiveDefiniteComponents;
+        % Calculate likliehoods
+        normalisedIntensityLikelihoods = updatedIntensityLikelihoods.*totalIntensityLikelihoods;
     end
     %% Add in new tentative tracks
-    %% Reassign
-    mu = reshape(mu, [model.xDimension targetNumber]);
-    S = rankOneMatrices + positiveDefiniteComponents;
+    targetNumber = targetNumber + numberOfMeasurements;
+    r(end+1:targetNumber, :) = normalisedIntensityLikelihoods';
+    mu(:, end+1:targetNumber) = xNew;
+    S(:, :, end+1:targetNumber) = SNew;
+    %% Gate the tracks
+    significantIndices = r > model.existenceThreshold;
+    r = r(significantIndices);
+    mu = mu(:, significantIndices);
+    S = S(:, :, significantIndices);
+    targetNumber = size(r, 1);
     %% Save the data
     stateEstimates.means{i} = mu;
     stateEstimates.covariances{i} = S;
