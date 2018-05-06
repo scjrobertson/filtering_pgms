@@ -5,7 +5,7 @@ function [pdafUpdated, clutterUpdated] = loopyBeliefPropagation(pdafLikelihoods,
 %   clutterLikelihoods, covergenceTolerance, maximumNumberOfIterations)
 %
 %   Code originally written by Jason Williams; however, it has been
-%   vectorised.
+%   (mostly) vectorised.
 %
 %   Inputs
 %       pdafLikelihoods - (n, m+1) matrix. The pdaf likelihoods for each of n
@@ -25,11 +25,10 @@ function [pdafUpdated, clutterUpdated] = loopyBeliefPropagation(pdafLikelihoods,
 [numberOfTargets, numberOfUpdateOptions] = size(pdafLikelihoods);
 numberOfMeasurements = numberOfUpdateOptions - 1;
 %% Declare the variables
+pdafUpdated = zeros(numberOfTargets, numberOfUpdateOptions);
 mu = ones(numberOfTargets, numberOfMeasurements);
 muOld = zeros(numberOfTargets, numberOfMeasurements);
 nu = zeros(numberOfTargets, numberOfMeasurements);
-
-pdafUpdated = zeros(numberOfTargets, numberOfUpdateOptions);
 %% Run loopy belief update propagation
 counter = 1;
 while(max(abs(mu(:) - muOld(:))) > covergenceTolerance && counter < maximumNumberOfIterations)

@@ -34,23 +34,24 @@ function [targetPriors, groundTruth, measurements] = generateGroundTruth(model)
 %% Simulation length
 simulationLength = 250;
 %% Target birth and death times
-numberOfTargets = 60;
-%targetPriors.birthTimes = ones(1, numberOfTargets);  
-%targetPriors.deathTimes = simulationLength*ones(1, numberOfTargets);
-targetPriors.birthTimes = sort(randi([1 simulationLength], [1 numberOfTargets]));
-targetPriors.deathTimes = randi([1 simulationLength], [1 numberOfTargets]) + targetPriors.birthTimes;
-targetPriors.deathTimes(targetPriors.deathTimes > simulationLength) = simulationLength;
+numberOfTargets = 4;
+targetPriors.birthTimes = ones(1, numberOfTargets);  
+targetPriors.deathTimes = simulationLength*ones(1, numberOfTargets);
+%targetPriors.birthTimes = sort(randi([1 simulationLength], [1 numberOfTargets]));
+%targetPriors.deathTimes = randi([1 simulationLength], [1 numberOfTargets]) + targetPriors.birthTimes;
+%targetPriors.deathTimes(targetPriors.deathTimes > simulationLength) = simulationLength;
 %% Noise parameters
 noiseMean = zeros(model.zDimension, 1);
 noiseCovariance = (1^2)*eye(model.zDimension);
 %% Target Priors
 % Means
-positions = model.observationSpaceLimits(:, 1) + 2*model.observationSpaceLimits(:, 2).*rand(model.xDimension/2, numberOfTargets);
-velocities = randi([-2 2], [2 numberOfTargets]) + randn([2 numberOfTargets]);
-targetPriors.means = [positions; velocities];
+positionIndex = randi([1 model.numberOfSpawningLocations], [1 numberOfTargets]);
+positions = model.spawnMeans(1:2, positionIndex);
+velocities(1, 1:numberOfTargets) = randi([0 2], [1 numberOfTargets]);
+velocities(2, :) = randi([-2 2], [1 numberOfTargets]);
+targetPriors.means = [positions; velocities + randn([2 numberOfTargets])];
 % Covariance
-covarianceMatrix = (2^2)*eye(model.xDimension);
-targetPriors.covariances = reshape(repmat(covarianceMatrix, [1 numberOfTargets]), [model.xDimension model.xDimension numberOfTargets]);
+targetPriors.covariances = reshape(repmat(model.spawnCovariance, [1 numberOfTargets]), [model.xDimension model.xDimension numberOfTargets]);
 %% Preallocate variables
 measurements = cell(1, simulationLength);
 groundTruth.means = cell(1, simulationLength);

@@ -130,7 +130,7 @@ if plotMeasurements == true
         end
     end
     % Limits
-    xlabel('t (s)'); ylabel('y (m)');
+    xlabel('t (s)'); ylabel('x (m)');
     set(gca, 'XLim', [0 model.T*(simulationLength-1)]); set(gca, 'YLim', xLimits);
     %legend([measurementLine, truthLine], 'Measurements', 'Ground Truth');
     %% y-happenings vs. time
