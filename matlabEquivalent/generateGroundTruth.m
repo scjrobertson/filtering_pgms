@@ -32,9 +32,9 @@ function [targetPriors, groundTruth, measurements] = generateGroundTruth(model)
 %           target-generated and clutter generated measurements -- for each
 %           time-step of the simulation.
 %% Simulation length
-simulationLength = 250;
+simulationLength = 500;
 %% Target birth and death times
-numberOfTargets = 4;
+numberOfTargets = 5;
 targetPriors.birthTimes = ones(1, numberOfTargets);  
 targetPriors.deathTimes = simulationLength*ones(1, numberOfTargets);
 %targetPriors.birthTimes = sort(randi([1 simulationLength], [1 numberOfTargets]));
@@ -47,8 +47,7 @@ noiseCovariance = (1^2)*eye(model.zDimension);
 % Means
 positionIndex = randi([1 model.numberOfSpawningLocations], [1 numberOfTargets]);
 positions = model.spawnMeans(1:2, positionIndex);
-velocities(1, 1:numberOfTargets) = randi([0 2], [1 numberOfTargets]);
-velocities(2, :) = randi([-2 2], [1 numberOfTargets]);
+velocities = ones(2, numberOfTargets);
 targetPriors.means = [positions; velocities + randn([2 numberOfTargets])];
 % Covariance
 targetPriors.covariances = reshape(repmat(model.spawnCovariance, [1 numberOfTargets]), [model.xDimension model.xDimension numberOfTargets]);

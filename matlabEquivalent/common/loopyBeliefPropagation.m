@@ -26,6 +26,11 @@ function [pdafUpdated, clutterUpdated] = loopyBeliefPropagation(pdafLikelihoods,
 numberOfMeasurements = numberOfUpdateOptions - 1;
 %% Declare the variables
 pdafUpdated = zeros(numberOfTargets, numberOfUpdateOptions);
+if numberOfTargets == 0
+   clutterUpdated = clutterLikelihoods./sum(clutterLikelihoods, 2); 
+   return;
+end
+%% Continue if there are targets
 mu = ones(numberOfTargets, numberOfMeasurements);
 muOld = zeros(numberOfTargets, numberOfMeasurements);
 nu = zeros(numberOfTargets, numberOfMeasurements);
@@ -38,8 +43,8 @@ while(max(abs(mu(:) - muOld(:))) > covergenceTolerance && counter < maximumNumbe
     normalisingConstants = pdafLikelihoods(:, 1) + sum(detectionLikelihoods, 2);
     nu = pdafLikelihoods(:, 2:end)./(normalisingConstants - detectionLikelihoods);
     %% Update clutter likelihoods
-    totalClutterProbabilies = clutterLikelihoods + sum(nu, 1);
-    mu = 1./(totalClutterProbabilies - nu);
+    totalClutterProbabilities = clutterLikelihoods + sum(nu, 1);
+    mu = 1./(totalClutterProbabilities - nu);
     %% Reset counter
     counter = counter + 1;
 end
@@ -49,6 +54,6 @@ normalisingConstants = pdafLikelihoods(:, 1) + sum(detectionLikelihoods, 2);
 pdafUpdated(:, 1) = pdafLikelihoods(:, 1)./normalisingConstants;
 pdafUpdated(:, 2:end) = detectionLikelihoods./normalisingConstants;
 
-totalClutterProbabilies = clutterLikelihoods + sum(nu, 1);
-clutterUpdated = clutterLikelihoods./totalClutterProbabilies;
+totalClutterProbabilities = clutterLikelihoods + sum(nu, 1);
+clutterUpdated = clutterLikelihoods./totalClutterProbabilities;
 end

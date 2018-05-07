@@ -10,3 +10,4 @@ build
 *.csv
 *.m~
 *.fig
+*.mat

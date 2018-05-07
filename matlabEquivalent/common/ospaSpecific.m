@@ -47,7 +47,7 @@ cardinalityDifference = abs(m-n);
 muXX = repmat(muX, [1 m]);
 muYY = reshape(repmat(muY,[n 1]), [d n*m]);
 SXX = repmat(Sxx, [1 1 m]);
-SYY = reshape(repmat(reshape(Syy, [d d*n]), [1 m]), [d d n*m]);
+SYY = reshape(repmat(reshape(Syy, [d d*m]), [1 n]), [d d n*m]);
 difference = muXX - muYY;
 %% Euclidean distance
 euclideanDistance = reshape(sqrt(sum((difference).^2)), [n m]);

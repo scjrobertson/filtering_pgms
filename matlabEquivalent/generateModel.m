@@ -19,7 +19,7 @@ function model = generateModel(clutterRate, detectionProbability)
 model.xDimension = 4;
 model.zDimension = 2;
 %% Sampling period
-model.T = 20e-3;
+model.T = 1;
 %% Linear motion model
 % State transition matrix
 model.survivalProbability = 1; % Existing target survival probability - could be state dependent.
@@ -47,16 +47,16 @@ model.observationSpaceVolume = prod(model.observationSpaceLimits(:, 2) - model.o
 model.clutterRate = clutterRate;
 model.clutterPerUnitVolume = clutterRate/model.observationSpaceVolume;
 %% Spawning parameters
-model.numberOfSpawningLocations = 60;
-model.spawnMeans(1, 1:model.numberOfSpawningLocations) = linspace(model.observationSpaceLimits(1, 1), model.observationSpaceLimits(1, 2), model.numberOfSpawningLocations) + 25;
-model.spawnMeans(2, :) = 0.5*model.spawnMeans(1, :) + 2;
+model.numberOfSpawningLocations = 4;
+model.spawnMeans(1, 1:model.numberOfSpawningLocations) = -400*ones(1, model.numberOfSpawningLocations);
+model.spawnMeans(2, :) = linspace(model.observationSpaceLimits(2, 1)+50, model.observationSpaceLimits(2, 2)-50, model.numberOfSpawningLocations);
 model.spawnMeans(3:4, :) = repmat([2; 1], [1 model.numberOfSpawningLocations]);
-model.spawnCovariance = diag([0.8 0.8 2 2].^2);
+model.spawnCovariance = diag([2 2 2 2].^2);
 model.spawnCovariances = reshape(repmat(model.spawnCovariance, [1 model.numberOfSpawningLocations]), [model.xDimension model.xDimension model.numberOfSpawningLocations]);
 %% Poisson Point Process parameters
-model.PoissonSurvivalProbability = 0.1;
-model.lambdaThreshold = 1e-4;
-model.expectedNumberOfNewTargets = 1; % Expect one new target every time-step
+model.poissonSurvivalProbability = 0.5;
+model.lambdaThreshold = 1e-3;
+model.expectedNumberOfNewTargets = model.numberOfSpawningLocations; % Expect one new target every time-step
 model.newTargetProbability = model.expectedNumberOfNewTargets/model.numberOfSpawningLocations;
 %% OSPA parameters
 model.ospaP = 2;

@@ -35,9 +35,9 @@ r = zeros(0, 0); mu = zeros(model.xDimension, 0); S = zeros(model.xDimension, mo
 lambdaU = zeros(0); xU = zeros(model.xDimension, 0); SU = zeros(model.xDimension, model.xDimension, 0); % Poisson point process parameters
 targetNumber = 0;
 %% Run the filter
-for i = 2:simulationLength
+for i = 2:3%simulationLength
     %% Thin, then predict the Poisson Point Process
-    lambdaU = model.PoissonSurvivalProbability*lambdaU;
+    lambdaU = model.poissonSurvivalProbability*lambdaU;
     survivingPoissonIndices = lambdaU > model.lambdaThreshold;
     lambdaU = lambdaU(survivingPoissonIndices);
     intensitySize = size(lambdaU, 2);
@@ -66,7 +66,7 @@ for i = 2:simulationLength
         STemp = rightMultiprod(K, model.C, model.xDimension, model.zDimension, model.xDimension, targetNumber);
         SUpdated = simplifiedMultiprod((I - STemp), SPred, model.xDimension, model.xDimension, model.xDimension, targetNumber); % Update covariance matrices
         % Create updated state components
-        associationMatrix = repmat(1 - rPred + rPred*(1-model.detectionProbability), [1 numberOfMeasurements+1]);
+        associationMatrix = repmat(1 - model.detectionProbability*rPred, [1 numberOfMeasurements+1]);
         rUpdated = ones(targetNumber, numberOfMeasurements+1); rUpdated(:, 1) = rPred./sum(associationMatrix(:, 1));
         muZRep = repmat(muZ, [1 numberOfMeasurements]);
         zRep = reshape(repmat(measurements{i},[targetNumber 1]),[model.zDimension targetNumber*numberOfMeasurements]);
@@ -99,23 +99,25 @@ for i = 2:simulationLength
     leftProduct = sum(bsxfun(@times, ZUInvShaped, intensityDifference), 2);
     rightProduct = reshape(sum(intensityDifference.*leftProduct, 1), [intensitySize numberOfMeasurements]);
     clutterLikelihoodMatrix = repmat(normalisingConstants, [1 numberOfMeasurements]).*exp(-0.5*rightProduct);
-    totalIntensityLikelihoods = sum(clutterLikelihoodMatrix, 1) + model.clutterPerUnitVolume;
-    normalisedIntensityLikelihoods = totalIntensityLikelihoods./sum(totalIntensityLikelihoods, 2);
+    totalMass = sum(clutterLikelihoodMatrix, 1);
+    totalIntensityLikelihoods = totalMass + model.clutterPerUnitVolume;
+    weightedIntensityLikelihoods = totalMass./sum(totalIntensityLikelihoods);
     %% Update the PPP states
     % Determine means
-    intensityLikelihoods =  clutterLikelihoodMatrix./totalIntensityLikelihoods;
-    intensityProbabilities = reshape(intensityLikelihoods, [1 intensitySize numberOfMeasurements]);
-    xUUpdated = reshape(xU, [model.xDimension 1 intensitySize]) + sum(bsxfun(@times, KU, permute(intensityDifference, [2 1 3 4])), 2);
-    xUUpdated = permute(xUUpdated, [1 2 4 3]);
+    intensityLikelihoods =  clutterLikelihoodMatrix./totalMass;
+    intensityLikelihoods(isnan(intensityLikelihoods)) = 0;
+    intensityProbabilities = reshape(intensityLikelihoods, [1 1 intensitySize numberOfMeasurements]);
+    xUReshaped = reshape(xU, [model.xDimension 1 intensitySize]);
+    xURepeated = repmat(xUReshaped, [1 1 1 numberOfMeasurements]);
+    xUUpdated = xURepeated + sum(bsxfun(@times, KU, permute(intensityDifference, [2 1 3 4])), 2);
     if intensitySize == 1; xNew = sum(bsxfun(@times, squeeze(xUUpdated), intensityProbabilities), 2);
-    else; xNew = sum(bsxfun(@times, permute(squeeze(xUUpdated), [1 3 2]), intensityProbabilities), 2); end
+    else; xNew = sum(bsxfun(@times, xUUpdated, intensityProbabilities), 3); end
     % Determine covariance matrices
     xUShift = xUUpdated - xNew;
     outerProduct = bsxfun(@times, xUShift, permute(xUShift, [2 1 3 4]));
-    intensityProbabilitiesReshaped = reshape(intensityProbabilities, [1 1 numberOfMeasurements intensitySize]);
     xNew = reshape(xNew, [model.xDimension numberOfMeasurements]);
-    SUReshaped = permute(repmat(SUUpdated, [1 1 1 numberOfMeasurements]), [1 2 4 3]);
-    SNew = squeeze(sum(bsxfun(@times, intensityProbabilitiesReshaped, SUReshaped), 4)) + squeeze(sum(bsxfun(@times, intensityProbabilitiesReshaped, outerProduct), 4));
+    SUReshaped = repmat(SUUpdated, [1 1 1 numberOfMeasurements]);
+    SNew = squeeze(sum(bsxfun(@times, intensityProbabilities, SUReshaped), 3)) + squeeze(sum(bsxfun(@times, intensityProbabilities, outerProduct), 3));
     %% Thin the PPP
     lambdaU = (1-model.detectionProbability)*lambdaU;
     significantPoissonIndices = lambdaU > model.lambdaThreshold;
@@ -124,12 +126,14 @@ for i = 2:simulationLength
     SU = SU(:, :, significantPoissonIndices);
     %% Resolve data association by way of loopy belief propagation
     if (targetNumber ~= 0)
-        [updatedAssociationMatrix, updatedIntensityLikelihoods] = loopyBeliefPropagation(associationMatrix, totalIntensityLikelihoods, 10e-6, 5);
+        [updatedAssociationMatrix, updatedIntensityLikelihoods] = loopyBeliefPropagation(associationMatrix, totalIntensityLikelihoods, 10e-6, 200);
         %% Update states and compute weak marginals
         % Existence probability
-        rUpdated(:, 1) = rPred(:, 1).*updatedAssociationMatrix(:, 1);
+        rProbability = rUpdated.*updatedAssociationMatrix;
+        r = sum(rProbability, 2);
+        rProbability = rProbability./r;
         % Means
-        associationProbabilties =  permute(reshape(updatedAssociationMatrix, [1 targetNumber numberOfMeasurements+1]), [1 3 2]);
+        associationProbabilties =  permute(reshape(rProbability, [1 targetNumber numberOfMeasurements+1]), [1 3 2]);
         missedDetectionProbabilities = associationProbabilties(1, 1, :);
         muUpdated = zeros([model.xDimension 1 targetNumber numberOfMeasurements+1]);
         muUpdated(:, :, :, 1) = reshape(muPred, [model.xDimension 1 targetNumber]);
@@ -146,11 +150,13 @@ for i = 2:simulationLength
         mu = reshape(mu, [model.xDimension targetNumber]);
         S = rankOneMatrices + positiveDefiniteComponents;
         % Calculate likliehoods
-        normalisedIntensityLikelihoods = updatedIntensityLikelihoods.*totalIntensityLikelihoods;
+        totalIntensityLikelihoods = (updatedIntensityLikelihoods.*totalIntensityLikelihoods);
+    else
+        totalIntensityLikelihoods = (weightedIntensityLikelihoods.*totalIntensityLikelihoods);
     end
     %% Add in new tentative tracks
     targetNumber = targetNumber + numberOfMeasurements;
-    r(end+1:targetNumber, :) = normalisedIntensityLikelihoods';
+    r(end+1:targetNumber, :) = totalIntensityLikelihoods';
     mu(:, end+1:targetNumber) = xNew;
     S(:, :, end+1:targetNumber) = SNew;
     %% Gate the tracks
