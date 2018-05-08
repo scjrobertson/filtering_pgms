@@ -9,8 +9,8 @@ load('groundTruth.mat'); load('measurements.mat'); load('targetPriors.mat');
 [targetPriors, groundTruth, measurements] = generateGroundTruth(model);
 %% Run the TOMB
 %tic; stateEstimates = jpdaf(model, targetPriors, measurements); toc;
-tic; stateEstimatesTomb = exactTomb(model, measurements); toc;
-%tic; stateEstimates = jipdaf(model, measurements); toc;
+%tic; stateEstimatesTomb = exactTomb(model, measurements); toc;
+tic; stateEstimates = jipdaf(model, measurements); toc;
 %% Run the JIPDAF
-plotResults(model, groundTruth, stateEstimatesTomb, measurements, true);
-%plotResults(model, groundTruth, stateEstimates, measurements, true);
+%plotResults(model, groundTruth, stateEstimatesTomb, measurements, true);
+plotResults(model, groundTruth, stateEstimates, measurements, true);

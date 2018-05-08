@@ -34,7 +34,7 @@ function [targetPriors, groundTruth, measurements] = generateGroundTruth(model)
 %% Simulation length
 simulationLength = 500;
 %% Target birth and death times
-numberOfTargets = 5;
+numberOfTargets = 60;
 targetPriors.birthTimes = ones(1, numberOfTargets);  
 targetPriors.deathTimes = simulationLength*ones(1, numberOfTargets);
 %targetPriors.birthTimes = sort(randi([1 simulationLength], [1 numberOfTargets]));

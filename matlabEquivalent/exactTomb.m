@@ -34,13 +34,7 @@ r = zeros(0, 0); mu = zeros(model.xDimension, 0); S = zeros(model.xDimension, mo
 lambdaU = zeros(0); xU = zeros(model.xDimension, 0); SU = zeros(model.xDimension, model.xDimension, 0); % Poisson point process parameters
 targetNumber = 0;
 %% Run the filter
-for i = 2:3%simulationLength
-    %% Predict the established targets' states
-    r = model.survivalProbability*r;
-    mu = model.A*mu + model.u;
-    for j = 1:targetNumber
-        S(:, :, j) = model.A*S(:, :, j)*model.Atranspose + model.R;
-    end
+for i = 1:simulationLength
     %% Predict the state of the PPP
     lambdaU = model.poissonSurvivalProbability*lambdaU;
     survivingPoissonIndices = lambdaU > model.lambdaThreshold;
@@ -56,6 +50,12 @@ for i = 2:3%simulationLength
     lambdaU(end+1:intensitySize) = model.newTargetProbability;
     xU(:, end+1:intensitySize) = model.spawnMeans;
     SU(:, :, end+1:intensitySize) = model.spawnCovariances;
+    %% Predict the established targets' states
+    r = model.survivalProbability*r;
+    mu = model.A*mu + model.u;
+    for j = 1:targetNumber
+        S(:, :, j) = model.A*S(:, :, j)*model.Atranspose + model.R;
+    end
     %% Create update components for the established targets
     numberOfMeasurements = size(measurements{i}, 2);
     zMeas = measurements{i};
@@ -63,19 +63,22 @@ for i = 2:3%simulationLength
     rUpdated = zeros(targetNumber, numberOfMeasurements+1);
     muUpdated = zeros(model.xDimension, targetNumber, numberOfMeasurements+1);
     SUpdated = zeros(model.xDimension, model.xDimension, targetNumber, numberOfMeasurements+1);
+    determinants = zeros(1, targetNumber);
     for j = 1:targetNumber
-        associationMatrix(j, 1) = 1 - r(j) + r(j)*(1-model.detectionProbability);
+        associationMatrix(j, 1) = 1 - r(j)*model.detectionProbability;
         rUpdated(j, 1) = r(j)*(1-model.detectionProbability)/associationMatrix(j, 1);
         muUpdated(:, j, 1) = mu(:, j);
         SUpdated(:, :, j, 1) = S(:, :, j);
         
         Z = model.C*S(:, :, j)*model.Ctranspose + model.Q;
+        determinants(j) = det(Z);
         detNorm = sqrt(det(2*pi*Z));
         K = S(:, :, j)*model.Ctranspose/Z;
         SFinal = S(:, :, j) - K*model.C*S(:, :, j);
         for k = 1:numberOfMeasurements
             v =  zMeas(:, k) - model.C*mu(:, j);
             associationMatrix(j, k+1) = r(j)*model.detectionProbability*exp(-0.5*(v'/Z)*v)/detNorm;
+            storeRaw(j, k) = (v'/Z)*v;
             rUpdated(j, k+1) = 1;
             muUpdated(:, j, k+1) = mu(:, j) + K*v;
             SUpdated(:, :, j, k+1) = SFinal;
@@ -121,7 +124,7 @@ for i = 2:3%simulationLength
     lambdaU = (1-model.detectionProbability)*lambdaU;
     survivingPoissonIndices = lambdaU > model.lambdaThreshold;
     lambdaU = lambdaU(survivingPoissonIndices);
-    xU = model.A*xU(:, survivingPoissonIndices) + model.u;
+    xU = xU(:, survivingPoissonIndices);
     SU = SU(:, :, survivingPoissonIndices);
     %% Loopy belief propagation
     [updatedAssociationMatrix, updatedIntensityLikelihoods] = loopyBeliefPropagation(associationMatrix, intensityLikelihood, 1e-6, 200);
@@ -130,11 +133,13 @@ for i = 2:3%simulationLength
     r = zeros(numberOfTentativeTracks, 1);
     mu = zeros(model.xDimension, numberOfTentativeTracks);
     S = zeros(model.xDimension, model.xDimension, numberOfTentativeTracks);
+    rStore = zeros(targetNumber, numberOfMeasurements+1);
     
     for j = 1:targetNumber
        rProbability = updatedAssociationMatrix(j, :).*rUpdated(j, :); 
        r(j) = sum(rProbability);
        rProbability = rProbability'/r(j);
+       rStore(j, :) = rProbability;
        mu(:, j) = squeeze(muUpdated(:, j, :))*rProbability;
        for k = 1:(numberOfMeasurements+1)
            v = mu(:, j) - muUpdated(:, j, k);
@@ -142,7 +147,7 @@ for i = 2:3%simulationLength
        end
     end
     %% Add in new tenetative tracks
-    r(targetNumber+1:numberOfTentativeTracks) = updatedIntensityLikelihoods.*intensityLikelihood;
+    r(targetNumber+1:numberOfTentativeTracks) = updatedIntensityLikelihoods'.*rNew;
     mu(:, targetNumber+1:numberOfTentativeTracks) = xNew;
     S(:, :, targetNumber+1:numberOfTentativeTracks) = SNew;
     %% Gate the existing tracks
