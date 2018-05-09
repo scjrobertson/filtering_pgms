@@ -87,20 +87,24 @@ if plotMeasurements == true
     %% Plot the observation space
     figure; fullObservationSpace = gcf; box on; hold on; grid on;
     % Plot measurements
+    measurementLine = line(nan, nan, 'LineStyle','none','Marker','+','Markersize',8,'Color',0.7*ones(1,3));
     for i = 1:simulationLength
         if ~isempty(measurements{i})
-            measurementLine = line(measurements{i}(1, :), measurements{i}(2, :), 'LineStyle','none','Marker','+','Markersize',8,'Color',0.7*ones(1,3));
+            measurementLine.XData = [measurementLine.XData measurements{i}(1, :)]; measurementLine.YData = [measurementLine.YData measurements{i}(2, :)];
         end
     end
     % Plot ground truth
-    for i = 1:numberOfGroundTruthTrajectories
+    for i = 1:numberOfGroundTruthTrajectories 
         birthPoint = line(projectedGroundTruth{i}(1, 1), projectedGroundTruth{i}(2, 1), 'LineStyle','none','Marker','o', 'Markersize', 12,'LineWidth',1,'Color',0*ones(1,3));
         truthLine = line(projectedGroundTruth{i}(1, :), projectedGroundTruth{i}(2, :), 'LineStyle','-','Marker','none','LineWidth', 3,'Color',0*ones(1,3));
         deathPoint = line(projectedGroundTruth{i}(1, end), projectedGroundTruth{i}(2, end), 'LineStyle','none','Marker','^', 'Markersize', 12,'LineWidth',1,'Color',0*ones(1,3));
     end
     % State Estimates
+    estimateLine = line(nan, nan, 'LineStyle','none','Marker','*','Markersize',12,'Color', 'red');
     for i = 1:simulationLength
-        estimateLine = line(projectedStateEstimate{i}(1, :), projectedStateEstimate{i}(2, :), 'LineStyle','none','Marker','*','Markersize',12,'Color', 'red');
+        if ~isempty(projectedStateEstimate{i})
+            estimateLine.XData = [estimateLine.XData projectedStateEstimate{i}(1, :)]; estimateLine.YData = [estimateLine.YData projectedStateEstimate{i}(2, :)];
+        end
     end
     % Limits
     xlabel('x (m)'); ylabel('y (m)');
@@ -111,9 +115,11 @@ if plotMeasurements == true
     %% x-happenings vs. time
     subplot(211); box on; hold on; grid on;
     % Plot measurements
+    xMeasurementLine = line('LineStyle', 'none', 'Marker', '+', 'Markersize', 8, 'Color',0.7*ones(1,3));
     for i = 1:simulationLength
         if ~isempty(measurements{i})
-            measurementLine = line(model.T*(i-1), measurements{i}(1, :), 'LineStyle','none','Marker','+','Markersize',8,'Color',0.7*ones(1,3));
+            zSize = size(measurements{i}, 2);
+            xMeasurementLine.XData = [xMeasurementLine.XData ones(1, zSize)*model.T*(i-1)]; xMeasurementLine.YData = [xMeasurementLine.YData measurements{i}(1, :)];
         end
     end
     % Plot ground truth
@@ -124,9 +130,11 @@ if plotMeasurements == true
         deathPoint = line(groundTruthTime(end), projectedGroundTruth{i}(1, end), 'LineStyle','none','Marker','^', 'Markersize', 12, 'LineWidth',1,'Color',0*ones(1,3));
     end
     % State Estimates
+    xEstimateLine = line(nan, nan, 'LineStyle','none','Marker','*','Markersize',12,'Color', 'red');
     for i = 1:simulationLength
         if ~isempty(projectedStateEstimate{i})
-            estimateLine = line(model.T*(i-1), projectedStateEstimate{i}(1, :), 'LineStyle','none','Marker','*','Markersize',12,'Color', 'red');
+            xSize = size(projectedStateEstimate{i}, 2);
+            xEstimateLine.XData = [xEstimateLine.XData ones(1, xSize)*model.T*(i-1)]; xEstimateLine.YData = [xEstimateLine.YData projectedStateEstimate{i}(1, :)];
         end
     end
     % Limits
@@ -136,9 +144,11 @@ if plotMeasurements == true
     %% y-happenings vs. time
     subplot(212); box on; hold on; grid on;
     % Plot measurements
+    yMeasurementLine = line('LineStyle', 'none', 'Marker', '+', 'Markersize', 8, 'Color',0.7*ones(1,3));
     for i = 1:simulationLength
         if ~isempty(measurements{i})
-            measurementLine = line(model.T*(i-1), measurements{i}(2, :), 'LineStyle','none','Marker','+','Markersize',8,'Color',0.7*ones(1,3));
+            zSize = size(measurements{i}, 2);
+            yMeasurementLine.XData = [yMeasurementLine.XData ones(1, zSize)*model.T*(i-1)]; yMeasurementLine.YData = [yMeasurementLine.YData measurements{i}(2, :)];
         end
     end
     % Plot ground truth
@@ -149,9 +159,11 @@ if plotMeasurements == true
         deathPoint = line(groundTruthTime(end), projectedGroundTruth{i}(2, end), 'LineStyle','none','Marker','^', 'Markersize', 12, 'LineWidth',1,'Color',0*ones(1,3));
     end
     % State Estimates
+    yEstimateLine = line(nan, nan, 'LineStyle','none','Marker','*','Markersize',12,'Color', 'red');
     for i = 1:simulationLength
         if ~isempty(projectedStateEstimate{i})
-            estimateLine = line(model.T*(i-1), projectedStateEstimate{i}(2, :), 'LineStyle','none','Marker','*','Markersize',12,'Color', 'red');
+            xSize = size(projectedStateEstimate{i}, 2);
+            yEstimateLine.XData = [yEstimateLine.XData ones(1, xSize)*model.T*(i-1)]; yEstimateLine.YData = [yEstimateLine.YData projectedStateEstimate{i}(2, :)];
         end
     end
     % Limits

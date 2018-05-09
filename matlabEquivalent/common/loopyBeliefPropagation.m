@@ -30,6 +30,11 @@ if numberOfTargets == 0
    clutterUpdated = clutterLikelihoods./sum(clutterLikelihoods, 2); 
    return;
 end
+if numberOfMeasurements == 0 && numberOfTargets > 0
+   pdafUpdated(:, 1) = ones(numberOfTargets, 1);
+   clutterUpdated = zeros(1, numberOfMeasurements);
+   return;
+end
 %% Continue if there are targets
 mu = ones(numberOfTargets, numberOfMeasurements);
 muOld = zeros(numberOfTargets, numberOfMeasurements);

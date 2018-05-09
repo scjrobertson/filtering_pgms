@@ -22,7 +22,7 @@ model.zDimension = 2;
 model.T = 1;
 %% Linear motion model
 % State transition matrix
-model.survivalProbability = 1; % Existing target survival probability - could be state dependent.
+model.survivalProbability = 0.9; % Existing target survival probability - could be state dependent.
 model.existenceThreshold = 1e-3;
 model.A = [ eye(model.xDimension/2) model.T*eye(model.xDimension/2); ...
     zeros(model.xDimension/2) eye(model.xDimension/2)];
@@ -47,7 +47,7 @@ model.observationSpaceVolume = prod(model.observationSpaceLimits(:, 2) - model.o
 model.clutterRate = clutterRate;
 model.clutterPerUnitVolume = clutterRate/model.observationSpaceVolume;
 %% Spawning parameters
-model.numberOfSpawningLocations = 4;
+model.numberOfSpawningLocations = 60;
 model.spawnMeans(1, 1:model.numberOfSpawningLocations) = -400*ones(1, model.numberOfSpawningLocations);
 model.spawnMeans(2, :) = linspace(model.observationSpaceLimits(2, 1)+50, model.observationSpaceLimits(2, 2)-50, model.numberOfSpawningLocations);
 model.spawnMeans(3:4, :) = repmat([2; 1], [1 model.numberOfSpawningLocations]);

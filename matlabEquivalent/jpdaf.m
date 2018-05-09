@@ -31,6 +31,8 @@ function stateEstimates = jpdaf(model, targetPriors, measurements)
 %% Admin
 simulationLength = size(measurements, 2);
 I = eye(model.xDimension);
+xLimits = model.observationSpaceLimits(1, :)';
+yLimits = model.observationSpaceLimits(2, :)';
 %% Add in initial targets
 targetLabels = find(targetPriors.birthTimes == 1);
 mu = targetPriors.means(:, targetLabels);
@@ -64,11 +66,11 @@ for i = 2:simulationLength
         muZRep = repmat(muZ, [1 numberOfMeasurements]);
         zRep = reshape(repmat(measurements{i},[targetNumber 1]),[model.zDimension targetNumber*numberOfMeasurements]);
         % Calculate the likelihoods
-        difference = reshape(zRep - muZRep, [model.zDimension 1 targetNumber numberOfMeasurements]);
-        ZInvStacked = repmat(reshape(ZInv, [model.zDimension model.zDimension*targetNumber]), [1 numberOfMeasurements]);
-        ZInvShaped = reshape(ZInvStacked, [model.zDimension model.zDimension targetNumber numberOfMeasurements]);
+        difference = reshape(zRep - muZRep, [1 model.zDimension targetNumber numberOfMeasurements]);
+        differencePermuted = permute(difference, [2 1 3 4]);
+        ZInvShaped = repmat(ZInv, [1 1 1 numberOfMeasurements]);
         leftProduct = sum(bsxfun(@times, ZInvShaped, difference), 2);
-        rightProduct = reshape(sum(difference.*leftProduct, 1), [targetNumber numberOfMeasurements]);
+        rightProduct = reshape(sum(bsxfun(@times, differencePermuted, leftProduct), 1), [targetNumber numberOfMeasurements]);
         associationMatrix(:, 2:end) = repmat(normalisingConstants, [1 numberOfMeasurements]).*exp(-0.5*rightProduct);
         %% Loopy Belief Propagation
         clutterLikelihoods = ones(1, numberOfMeasurements)/model.observationSpaceVolume;
@@ -79,7 +81,7 @@ for i = 2:simulationLength
         missedDetectionProbabilities = associationProbabilties(1, 1, :);
         muUpdated = zeros([model.xDimension 1 targetNumber numberOfMeasurements+1]);
         muUpdated(:, :, :, 1) = reshape(muPred, [model.xDimension 1 targetNumber]);
-        muUpdated(:, :, :, 2:end) = muUpdated(:, :, :, 1) + sum(bsxfun(@times, K, permute(difference, [2 1 3 4])), 2);
+        muUpdated(:, :, :, 2:end) = muUpdated(:, :, :, 1) + sum(bsxfun(@times, K, difference), 2);
         if targetNumber == 1; mu = sum(bsxfun(@times, squeeze(muUpdated), associationProbabilties), 2); 
         else; mu = sum(bsxfun(@times, permute(squeeze(muUpdated), [1 3 2]), associationProbabilties), 2); end
         % Covariance matrices

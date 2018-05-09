@@ -75,9 +75,8 @@ for i = 1:simulationLength
         differencePermuted = permute(difference, [2 1 3 4]);
         ZInvShaped = repmat(ZInv, [1 1 1 numberOfMeasurements]);
         leftProduct = sum(bsxfun(@times, ZInvShaped, difference), 2);
-        rightProduct = sum(bsxfun(@times, differencePermuted, leftProduct), 1);
-        rightProductReshaped = reshape(rightProduct, [targetNumber numberOfMeasurements]);
-        associationMatrix(:, 2:end) = repmat(rPred, [1 numberOfMeasurements]).*repmat(normalisingConstants, [1 numberOfMeasurements]).*exp(-0.5*rightProductReshaped);
+        rightProduct = reshape(sum(bsxfun(@times, differencePermuted, leftProduct), 1), [targetNumber numberOfMeasurements]);
+        associationMatrix(:, 2:end) = repmat(rPred, [1 numberOfMeasurements]).*repmat(normalisingConstants, [1 numberOfMeasurements]).*exp(-0.5*rightProduct);
     end
     %% Create update components for the PPP
     % Create update components
