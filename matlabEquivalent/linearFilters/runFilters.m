@@ -3,14 +3,12 @@ close all; clc;
 addpath common statisticsToolBox;
 warning off; %% Right division is iffy sometimes.
 %% Load the model
-model = generateModel(4, 0.95);
+model = generateModel(20, 0.95);
 %% Generate the ground truth
-load('groundTruth.mat'); load('measurements.mat'); load('targetPriors.mat');
 [targetPriors, groundTruth, measurements] = generateGroundTruth(model);
-%% Run the TOMB
+%% Run the JPDAF/JIPDAF
 %tic; stateEstimates = jpdaf(model, targetPriors, measurements); toc;
-%tic; stateEstimatesTomb = exactTomb(model, measurements); toc;
+%tic; stateEstimates = jipdafWithLoops(model, measurements); toc;
 tic; stateEstimates = jipdaf(model, measurements); toc;
 %% Run the JIPDAF
-%plotResults(model, groundTruth, stateEstimatesTomb, measurements, true);
 plotResults(model, groundTruth, stateEstimates, measurements, true);

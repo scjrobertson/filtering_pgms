@@ -1,12 +1,11 @@
-function [euclideanOspa, hellingerOspa] = ospaSpecific(muX, Sxx, muY, Syy, euclideanC, euclideanP, hellingerC, hellingerP)
+function hellingerOspa = ospaSpecific(muX, Sxx, muY, Syy, hellingerC, hellingerP)
 % OSPA - Optimal Subpattern Assigment
 %   [euclideanOspa, hellingerOspa] = hellingerOspaSpecific(muX, Sxx, muY, Syy, euclideanC, euclideanP, hellingerC, hellingerP)
 %
 %   Compute the distance between two finite sets using the
-%   Schumacher metric. This function calculates both the
-%   Euclidean-OSPA and Hellinger-OSPA betwen a two finite sets of
-%   Gaussian distrubtions. This is not general, it only works for a 
-%   4x4 covariance matrix, but hopefully it is fast.
+%   Schumacher metric. This function calculates the Hellinger-OSPA 
+%   betwen a two finite sets of Gaussian distrubtions. This is not general, it only works 
+%   for a 4x4 covariance matrix, but hopefully it is fast.
 %
 %   See also euclideanOspa, hellingerOspa, Hungarian.
 %
@@ -17,23 +16,18 @@ function [euclideanOspa, hellingerOspa] = ospaSpecific(muX, Sxx, muY, Syy, eucli
 %       muy - (d, n) matrix. A finite set of Gaussian means.
 %       Syy - (d, d, n) matrix. A finite set of Gaussian covariance, in
 %           muY's respective order.
-%       euclideanC - double. Cut-off parameter for Euclidean-OSPA.
-%       euclideanP - double. p-parameter for the Euclidean-OSPA.
 %       hellingerC - double. Cut-off parameter for Hellinger-OSPA.
 %       hellingerP - double. p-parameter for the Hellinger-OSPA.
 %
 %   Outputs
-%       euclideanOSPA - (3, 1) array. The Euclidean-OSPA components.
 %       hellingerOSPA - (3, 1) array. The Hellinger OSPA components.
 %% Case 1 - Both sets are empty
 if isempty(muX) && isempty(muY)
-    euclideanOspa = zeros(3, 1);
     hellingerOspa = zeros(3, 1);
     return;
 end
 %% Case 2 - A single set is empty
 if isempty(muX) || isempty(muY)
-    euclideanOspa = [euclideanC; 0; euclideanC];
     hellingerOspa = [hellingerC; 0; hellingerC];   
     return;
 end
@@ -49,13 +43,6 @@ muYY = reshape(repmat(muY,[n 1]), [d n*m]);
 SXX = repmat(Sxx, [1 1 m]);
 SYY = reshape(repmat(reshape(Syy, [d d*m]), [1 n]), [d d n*m]);
 difference = muXX - muYY;
-%% Euclidean distance
-euclideanDistance = reshape(sqrt(sum((difference).^2)), [n m]);
-euclideanCutOff = min(euclideanC, euclideanDistance).^euclideanP;
-[~, euclideanCost] = Hungarian(euclideanCutOff);
-euclideanOspa(1, 1) = ((1/largestCardinality)*( (euclideanC^euclideanP)*cardinalityDifference + euclideanCost) ) ^(1/euclideanP);
-euclideanOspa(2, 1) = ((1/largestCardinality)*euclideanCost)^(1/euclideanP);
-euclideanOspa(3, 1) = ((1/largestCardinality)*(euclideanC^euclideanP)*cardinalityDifference)^(1/euclideanP);
 %% Hellinger distance
 muZZ = reshape(difference, [d 1 n m]);
 SZZ = SXX + SYY;

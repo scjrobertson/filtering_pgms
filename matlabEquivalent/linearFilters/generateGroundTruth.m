@@ -22,6 +22,8 @@ function [targetPriors, groundTruth, measurements] = generateGroundTruth(model)
 %       groundTruth - struct. A structure with the following fields:
 %           trajectories - (1, n) cell. A cell containing an array
 %               for each ground truth trajectory.
+%           rfsTrajectories - (1, n). A cell containing the ground truth as
+%           an RFS.
 %           means - (1, m) cell. Contains the Kalman filter belief
 %               mean for each live trajectory at every time-step.
 %           covariances - (1, m) cell. Contains the Kalman filter belief
@@ -49,53 +51,78 @@ velocities = ones(2, numberOfTargets);
 targetPriors.means = [positions; velocities + randn([2 numberOfTargets])];
 % Covariance
 targetPriors.covariances = reshape(repmat(model.spawnCovariance, [1 numberOfTargets]), [model.xDimension model.xDimension numberOfTargets]);
+%% Add in initial targets
+targetLabels = find(targetPriors.birthTimes == 1);
+x = targetPriors.means(:, targetLabels);
+mu = targetPriors.means(:, targetLabels);
+S = targetPriors.covariances(:, :, targetLabels);
+currentTargetNumber = size(targetLabels, 2);
 %% Preallocate variables
+I = eye(model.xDimension);
 measurements = cell(1, simulationLength);
-groundTruth.means = cell(1, simulationLength);
-groundTruth.covariances = cell(1, simulationLength);
-groundTruth.trajectories = cell(1, numberOfTargets);
-groundTruth.cardinality = zeros(1, simulationLength);
-%% Add in clutter and initialise beliefs
-for i = 1:simulationLength
-   measurements{i} = model.observationSpaceLimits(:, 1) + ...
-       2*model.observationSpaceLimits(:, 2).*rand(model.zDimension, poissrnd(model.clutterRate)); 
-   groundTruth.cardinality(i) = sum( (i >= targetPriors.birthTimes).*(i <= targetPriors.deathTimes), 2);
-end
-%% Determine the ground truth trajectories and beliefs
-for i = 1:numberOfTargets
-    lifeSpan = targetPriors.deathTimes(i) - (targetPriors.birthTimes(i)-1);
-    groundTruth.trajectories{i} = zeros(model.xDimension+1, lifeSpan); 
-    groundTruth.trajectories{i}(1, :) = model.T*(targetPriors.birthTimes(i)-1:targetPriors.deathTimes(i)-1);
-    groundTruth.trajectories{i}(2:end, 1) = targetPriors.means(:, i);
-    %% Initialise the track
-    absoluteTime = targetPriors.birthTimes(i);
-    mu = targetPriors.means(:, i);
-    S = targetPriors.covariances(:, :, i);
-    groundTruth.means{absoluteTime}(:, end+1) = mu;
-    groundTruth.covariances{absoluteTime}(:, :, size(groundTruth.means{absoluteTime}, 2)) = S;
-    %% Determine the Kalman filter belief for trajectory lifespan
-    for j = 2:lifeSpan
-        absoluteTime = absoluteTime + 1;
-        groundTruth.trajectories{i}(2:end, j) = model.A*groundTruth.trajectories{i}(2:end, j-1) + model.u;
-        z = model.C*groundTruth.trajectories{i}(2:end, j) + mvnrnd(noiseMean, noiseCovariance, 1)';
-        %% Predicted state of the target
-        muPred = model.A*mu + model.u;
-        SPred = model.A*S*model.Atranspose + model.R;
-        %% Measurement update
-        if (rand > model.detectionProbability) % If a detection is missed
-            mu = muPred;
-            S = SPred;
-        else
-            %% Kalman filter update
-            K = SPred*(model.Ctranspose)/(model.C*SPred*model.Ctranspose + model.Q);
-            mu = muPred + K*(z - model.C*muPred);
-            S = SPred - K*model.C*SPred;
-            %% Add measurement to list
-            measurements{absoluteTime}(:, end+1) = z; 
-        end
-        %% Append to ground truth beliefs
-        groundTruth.means{absoluteTime}(:, end+1) = mu;
-        groundTruth.covariances{absoluteTime}(:, :, size(groundTruth.means{absoluteTime}, 2)) = S;
+measurements{1} = model.observationSpaceLimits(:, 1) + 2*model.observationSpaceLimits(:, 2).*rand(model.zDimension, poissrnd(model.clutterRate)); 
+groundTruth.means = cell(1, simulationLength); groundTruth.means{1} = mu;
+groundTruth.covariances = cell(1, simulationLength); groundTruth.covariances{1} = S;
+groundTruth.cardinality = zeros(1, simulationLength); groundTruth.cardinality(1) = currentTargetNumber;
+groundTruth.rfsTrajectory = cell(1, simulationLength); groundTruth.rfsTrajectory{1} = mu;
+groundTruth.trajectories{numberOfTargets} = []; 
+for i = targetLabels; groundTruth.trajectories{i} = [0; x(:, i)]; end
+%% Determine the ground truth
+for i = 2:simulationLength
+    time = model.T*(i-1);
+    %% Add in measurements
+    missedDetection = rand([1 currentTargetNumber]) > model.detectionProbability;
+    numberOfTargetGeneratedMeasurements = sum(~missedDetection);
+    numberOfClutterReturns = poissrnd(model.clutterRate);
+    measurements{i} = zeros(model.zDimension, numberOfTargetGeneratedMeasurements + numberOfClutterReturns);
+    measurements{i}(:, 1:numberOfClutterReturns) = model.observationSpaceLimits(:, 1) + 2*model.observationSpaceLimits(:, 2).*rand(model.zDimension, numberOfClutterReturns); 
+    %% Predict the targets' states
+    x = model.A*x; % Exact ground truth
+    muPred = model.A*mu; 
+    SPred = quadraticMultiprod(S, model.A, model.Atranspose, model.xDimension, currentTargetNumber) + model.R; 
+    %% Create the update components
+    targetGeneratedMeasurements = model.C*x + mvnrnd(noiseMean, noiseCovariance, currentTargetNumber)'; % Exact value of ground truth
+    muZ = model.C*muPred; % Predicted measurement mean
+    Kxz = rightMultiprod(SPred, model.Ctranspose, model.xDimension, model.xDimension, model.zDimension, currentTargetNumber); % Cross covariance
+    Z = leftMultiprod(model.C, Kxz, model.zDimension, model.xDimension, model.zDimension, currentTargetNumber) + model.Q; % Predicted measurement covariance
+    ZInv = simplifiedMultinv(Z, model.zDimension, currentTargetNumber); % Inverse of Z, used to determine likelihoods
+    K = simplifiedMultiprod(Kxz, ZInv, model.xDimension, model.zDimension, model.zDimension, currentTargetNumber); % Kalman gain
+    STemp = rightMultiprod(K, model.C, model.xDimension, model.zDimension, model.xDimension, currentTargetNumber);
+    SUpdated = simplifiedMultiprod((I - STemp), SPred, model.xDimension, model.xDimension, model.xDimension, currentTargetNumber); % Update covariance matrices
+    %% Update the targets' states
+    difference = reshape(targetGeneratedMeasurements - muZ, [1 model.zDimension currentTargetNumber]);
+    muPredReshaped = reshape(muPred, [model.xDimension 1 currentTargetNumber]);
+    muUpdated = reshape(muPredReshaped + sum(bsxfun(@times, K, difference), 2), [model.xDimension currentTargetNumber]);
+    %% Decide whether a target missed a detection
+    mu = muUpdated; mu(:, missedDetection) = muPred(:, missedDetection);
+    S = SUpdated; S(:, :, missedDetection) = SPred(:, :, missedDetection);
+    measurements{i}(:, numberOfClutterReturns+1:end) = targetGeneratedMeasurements(:, ~missedDetection);
+    %% Add in new targets
+    newTargetLabels = find(targetPriors.birthTimes == i);
+    numberOfNewTargets = size(newTargetLabels, 2);
+    if numberOfNewTargets ~= 0
+        newIndices = (currentTargetNumber+1):(currentTargetNumber + numberOfNewTargets);
+        targetLabels(newIndices) = newTargetLabels;
+        x(:, newIndices) = targetPriors.means(:, newTargetLabels);
+        mu(:, newIndices) = targetPriors.means(:, newTargetLabels);
+        S(:, :, newIndices) = targetPriors.covariances(:, :, newTargetLabels);
+        currentTargetNumber = currentTargetNumber + numberOfNewTargets;
     end
+    %% Remove dead targets
+    aliveTargetIndices = targetPriors.deathTimes(targetLabels) >= i; 
+    if currentTargetNumber ~= 0
+        targetLabels = targetLabels(aliveTargetIndices);
+        x = x(:, aliveTargetIndices);
+        mu = mu(:, aliveTargetIndices);
+        S = S(:, :, aliveTargetIndices);
+        currentTargetNumber = size(targetLabels, 2);
+    end
+    %% Update ground truth trajectories
+    groundTruth.rfsTrajectory{i} = x;
+    for j = 1:currentTargetNumber; groundTruth.trajectories{targetLabels(j)} = [groundTruth.trajectories{targetLabels(j)} [time; x(:, j)]]; end
+    %% Update ground truth beliefs
+    groundTruth.means{i} = mu;
+    groundTruth.covariances{i} = S;
+    groundTruth.cardinality(i) = currentTargetNumber;
 end
 end

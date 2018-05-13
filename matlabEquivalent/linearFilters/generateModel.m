@@ -22,7 +22,7 @@ model.zDimension = 2;
 model.T = 1;
 %% Linear motion model
 % State transition matrix
-model.survivalProbability = 0.9; % Existing target survival probability - could be state dependent.
+model.survivalProbability = 0.99; % Existing target survival probability - could be state dependent.
 model.existenceThreshold = 1e-3;
 model.A = [ eye(model.xDimension/2) model.T*eye(model.xDimension/2); ...
     zeros(model.xDimension/2) eye(model.xDimension/2)];

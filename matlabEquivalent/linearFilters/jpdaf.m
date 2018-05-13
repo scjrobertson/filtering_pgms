@@ -54,7 +54,6 @@ for i = 2:simulationLength
         Kxz = rightMultiprod(SPred, model.Ctranspose, model.xDimension, model.xDimension, model.zDimension, targetNumber); % Cross covariance
         Z = leftMultiprod(model.C, Kxz, model.zDimension, model.xDimension, model.zDimension, targetNumber) + model.Q; % Predicted measurement covariance
         ZInv = simplifiedMultinv(Z, model.zDimension, targetNumber); % Inverse of Z, used to determine likelihoods
-        %detZ = squeeze(Z(1, 1, :).*Z(2, 2, :) - Z(2, 1, :).*Z(1, 2, :)); % Determinants
         detZ = reshape(Z(1, 1, :).*Z(2, 2, :) - Z(2, 1, :).*Z(1, 2, :), [targetNumber 1]);
         normalisingConstants = (model.detectionProbability)./sqrt((2*pi)^(model.zDimension)*detZ); % Normalising constants for likelihoods
         K = simplifiedMultiprod(Kxz, ZInv, model.xDimension, model.zDimension, model.zDimension, targetNumber); % Kalman gain

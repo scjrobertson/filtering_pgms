@@ -1,10 +1,10 @@
-function model = generateNonlinearModel(clutterRate, detectionProbability)
-% GENERATNONLINEAREMODEL -- Generates a structure containing all simulation info.
-%   model = generateModel(detectionProbabilty, clutterRate);
+function model = generateNonLinearModel(clutterRate, detectionProbability)
+% GENERATENONLINEARMODEL -- Generates a structure containing all simulation info.
+%   model = generateNonLinearModel(detectionProbabilty, clutterRate);
 %
 %   Declares all simulation information, except the ground truth.
 %
-%   See also generateTruth.
+%   See also generateGroundTruth.
 %
 %   Inputs
 %       clutterRate - integer. The number of expected clutter per
@@ -32,13 +32,25 @@ model.u = zeros(model.xDimension, 1);
 r0 = 0.3;
 model.R = r0*[ (1/3)*(model.T^3)*eye(model.xDimension/2) 0.5*(model.T^2)*eye(model.xDimension/2);
     0.5*(model.T^2)*eye(model.xDimension/2) model.T*eye(model.xDimension/2)];
-%% Linear observation model
-% Observation matrix
-model.C = [ eye(model.zDimension) zeros(model.zDimension) ];
-model.Ctranspose = model.C';
-% Measurement noise
+%% Non-linear observation model - Tranforms are performed in the code itself
+% Sensor positions
+model.numberOfSensors = 3;
+model.sensorPosition = [500 0 -400; 0 500 -300];
+model.maximumSensorRange = 250; % Thumb suck value
+model.maximumDopplerVelocity = 40; % Thumb suck value
+%Measurement noise
 q0 = 0.3;
 model.Q = q0*eye(model.zDimension);
+%% Unscented transofrm parameters
+model.utAlpha = 1;
+model.utBeta = 1;
+model.utKappa = -3;
+model.utLambda = (model.utAlpha^2)*(model.xDimension + model.utKappa) - model.xDimension;
+model.utGamma = model.xDimension + model.utLambda;
+
+model.meanWeight = (1.0*model.utLambda)/(model.utGamma); 
+model.covarianceWeight = model.meanWeight + (1 - model.utAlpha^2 + model.utBeta);
+model.dimensionWeights = ones([1 2*model.xDimension])/(2.0*model.utGamma);
 %% Detection probability
 model.detectionProbability = detectionProbability; % Could be state dependent.
 %% Observation space
@@ -56,7 +68,7 @@ model.spawnCovariances = reshape(repmat(model.spawnCovariance, [1 model.numberOf
 %% Poisson Point Process parameters
 model.poissonSurvivalProbability = 0.5;
 model.lambdaThreshold = 1e-3;
-model.expectedNumberOfNewTargets = model.numberOfSpawningLocations; % Expect one new target every time-step
+model.expectedNumberOfNewTargets = 1; %model.numberOfSpawningLocations; % Expect one new target every time-step
 model.newTargetProbability = model.expectedNumberOfNewTargets/model.numberOfSpawningLocations;
 %% OSPA parameters
 model.ospaP = 2;

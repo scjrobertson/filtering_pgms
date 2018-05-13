@@ -7,6 +7,8 @@ function plotResults(model, groundTruth, stateEstimates, measurements, plotMeasu
 %       groundTruth - struct. A structure with the following fields.
 %           trajectories - (1, n) cell. A cell containing an array
 %               for each ground truth trajectory.
+%           rfsTrajectories - (1, n). A cell containing the ground truth as
+%           an RFS.
 %           means - (1, m) cell. Contains the Kalman filter belief
 %               mean for each live trajectory at every time-step.
 %           covariances - (1, m) cell. Contains the Kalman filter belief
@@ -31,11 +33,11 @@ xLimits = model.observationSpaceLimits(1, :)';
 yLimits = model.observationSpaceLimits(2, :)';
 %% Calculate the error metrics
 % OSPA
-euclideanOspa = zeros(3, simulationLength);
+eOspa = zeros(3, simulationLength);
 hOspa = zeros(3, simulationLength);
 for i = 1:simulationLength
-    [euclideanOspa(:, i), hOspa(:, i)] = ospaSpecific(groundTruth.means{i}, groundTruth.covariances{i}, ...
-        stateEstimates.means{i}, stateEstimates.covariances{i}, model.eOspaC, model.ospaP, model.hOspaC, model.ospaP);
+    [eOspa(1, i), eOspa(2, i), eOspa(3, i)] = euclideanOspa(groundTruth.rfsTrajectory{i}, stateEstimates.means{i}, model.eOspaC, model.ospaP);
+    hOspa(:, i) = ospaSpecific(groundTruth.means{i}, groundTruth.covariances{i}, stateEstimates.means{i}, stateEstimates.covariances{i}, model.hOspaC, model.ospaP);
 end
 %% Plot OSPA and cardinality vs time
 figure; ospaVersusTime = gcf;
@@ -43,12 +45,12 @@ figure; ospaVersusTime = gcf;
 subplot(311); box on; hold on; grid on;
 ospaTime = model.T*(0:simulationLength-1);
 % OSPA
-eOspaLine = line(ospaTime, euclideanOspa(1, :), 'LineStyle','-','Marker','none','LineWidth',2,'Color',[1 0 0]);
-eLocalisationLine = line(ospaTime, euclideanOspa(2, :), 'LineStyle','-','Marker','none','LineWidth',2,'Color',[0 1 0]);
-eCardinalityLine = line(ospaTime, euclideanOspa(3, :), 'LineStyle','-','Marker','none','LineWidth',2,'Color',[0 0 1]);
+eOspaLine = line(ospaTime, eOspa(1, :), 'LineStyle','-','Marker','none','LineWidth',2,'Color',[1 0 0]);
+eLocalisationLine = line(ospaTime, eOspa(2, :), 'LineStyle','-','Marker','none','LineWidth',2,'Color',[0 1 0]);
+eCardinalityLine = line(ospaTime, eOspa(3, :), 'LineStyle','-','Marker','none','LineWidth',2,'Color',[0 0 1]);
 % Limits
 xlabel('t (s)'); ylabel('E-OSPA (m)');
-set(gca, 'XLim', [0 model.T*(simulationLength-1)]); set(gca, 'YLim', [0 max(euclideanOspa(1, :))+0.1]);
+set(gca, 'XLim', [0 model.T*(simulationLength-1)]); set(gca, 'YLim', [0 max(eOspa(1, :))+0.1]);
 legend([eOspaLine, eLocalisationLine, eCardinalityLine], 'OSPA', 'Localisation', 'Cardinality');
 %% Plot H-OSPA vs time
 subplot(312); box on; hold on; grid on;
