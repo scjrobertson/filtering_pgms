@@ -32,11 +32,9 @@ function [targetPriors, groundTruth, measurements] = generateGroundTruth(model)
 %           target-generated and clutter generated measurements -- for each
 %           time-step of the simulation.
 %% Simulation length
-simulationLength = 500;
+simulationLength = 1000;
 %% Target birth and death times
-numberOfTargets = 200;
-%targetPriors.birthTimes = ones(1, numberOfTargets);  
-%targetPriors.deathTimes = simulationLength*ones(1, numberOfTargets);
+numberOfTargets = 5;
 targetPriors.birthTimes = sort(randi([1 simulationLength], [1 numberOfTargets]));
 targetPriors.deathTimes = randi([1 simulationLength], [1 numberOfTargets]) + targetPriors.birthTimes;
 targetPriors.deathTimes(targetPriors.deathTimes > simulationLength) = simulationLength;

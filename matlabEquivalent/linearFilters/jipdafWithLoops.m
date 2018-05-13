@@ -1,11 +1,12 @@
-function stateEstimates = exactTomb(model, measurements)
-% EXACTTOMB -- Estimates the target's states using approximate JPDAF
-%   stateEstimates = exactTOMB(model, targetPriors, measurements)
+function stateEstimates = jipdafWithLoops(model, measurements)
+% JIPDAFWITHLOOPS -- Estimates the target's states using approximate JPDAF
+%   stateEstimates = jipdafWithLoops(model, targetPriors, measurements)
 %
 %   Runs an approximate JIPDAF - it resolves the data association by way of
 %   loopy belief propagation. This implementation avoid for loops and is
-%   not very readable. Using matrices instead of 3D arrays throughout would
-%   probably be more efficient.
+%   not very readable. This code makes use of for loops and is slow in
+%   comparison to the vectorised jipdaf given in jipdaf.m; however, this
+%   code is more readable.
 %
 %   See also generateModel, generateGroundTruth, jpdaf, loopyBeliefPropagation
 %   and plotResults.

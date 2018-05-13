@@ -1,5 +1,5 @@
-function model = generateModel(clutterRate, detectionProbability)
-% GENERATEMODEL -- Generates a structure containing all simulation info.
+function model = generateNonlinearModel(clutterRate, detectionProbability)
+% GENERATNONLINEAREMODEL -- Generates a structure containing all simulation info.
 %   model = generateModel(detectionProbabilty, clutterRate);
 %
 %   Declares all simulation information, except the ground truth.
