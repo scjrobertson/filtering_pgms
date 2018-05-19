@@ -29,7 +29,7 @@ model.A = [ eye(model.xDimension/2) model.T*eye(model.xDimension/2); ...
 model.Atranspose = model.A'; %Precompute
 model.u = zeros(model.xDimension, 1);
 % Process noise
-r0 = 0.3;
+r0 = 1;
 model.R = r0*[ (1/3)*(model.T^3)*eye(model.xDimension/2) 0.5*(model.T^2)*eye(model.xDimension/2);
     0.5*(model.T^2)*eye(model.xDimension/2) model.T*eye(model.xDimension/2)];
 %% Linear observation model
@@ -37,7 +37,7 @@ model.R = r0*[ (1/3)*(model.T^3)*eye(model.xDimension/2) 0.5*(model.T^2)*eye(mod
 model.C = [ eye(model.zDimension) zeros(model.zDimension) ];
 model.Ctranspose = model.C';
 % Measurement noise
-q0 = 0.3;
+q0 = 1;
 model.Q = q0*eye(model.zDimension);
 %% Detection probability
 model.detectionProbability = detectionProbability; % Could be state dependent.
@@ -61,5 +61,5 @@ model.newTargetProbability = model.expectedNumberOfNewTargets/model.numberOfSpaw
 %% OSPA parameters
 model.ospaP = 2;
 model.eOspaC = 5; % Euclidean cut-off
-model.hOspaC = 1; % Hellinger cut-off
+model.hOspaC = 0.5; % Hellinger cut-off
 end

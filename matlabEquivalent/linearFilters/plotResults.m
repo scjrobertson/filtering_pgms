@@ -111,7 +111,7 @@ if plotMeasurements == true
     % Limits
     xlabel('x (m)'); ylabel('y (m)');
     set(gca, 'XLim', xLimits); set(gca, 'YLim', yLimits);
-    legend([measurementLine, truthLine], 'Measurements', 'Ground Truth');
+    legend([measurementLine, truthLine, estimateLine], 'Measurements', 'Ground Truth', 'State Estimate');
     %% Plot observation dimensions vs time
     figure; observationVersusTime = gcf;
     %% x-happenings vs. time
@@ -142,7 +142,7 @@ if plotMeasurements == true
     % Limits
     xlabel('t (s)'); ylabel('x (m)');
     set(gca, 'XLim', [0 model.T*(simulationLength-1)]); set(gca, 'YLim', xLimits);
-    %legend([measurementLine, truthLine], 'Measurements', 'Ground Truth');
+    legend([xMeasurementLine, truthLine, xEstimateLine], 'Measurements', 'Ground Truth', 'State Estimates');
     %% y-happenings vs. time
     subplot(212); box on; hold on; grid on;
     % Plot measurements
@@ -171,6 +171,6 @@ if plotMeasurements == true
     % Limits
     xlabel('t (s)'); ylabel('y (m)');
     set(gca, 'XLim', [0 model.T*(simulationLength-1)]); set(gca, 'YLim', xLimits);
-    %legend([measurementLine, truthLine], 'Measurements', 'Ground Truth');
+    legend([yMeasurementLine, truthLine, yEstimateLine], 'Measurements', 'Ground Truth', 'State Estimates');
 end
 end

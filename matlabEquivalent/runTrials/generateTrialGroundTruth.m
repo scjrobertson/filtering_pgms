@@ -1,4 +1,4 @@
-function [targetPriors, groundTruth, measurements] = generateGroundTruth(model)
+function [targetPriors, groundTruth, measurements] = generateTrialGroundTruth(model, simulationLength, numberOfTargets)
 % GENERATEGROUNDTRUTH -- Generates the ground truth trajectories, beliefs
 % and measurements.
 %   [groundTruthTrajectories, groundTruthMeans, groundTruthCovariances,
@@ -33,25 +33,18 @@ function [targetPriors, groundTruth, measurements] = generateGroundTruth(model)
 %       measurements - (1, m) cell. Contains the measurements --
 %           target-generated and clutter generated measurements -- for each
 %           time-step of the simulation.
-%% Simulation length
-simulationLength = 250;
 %% Target birth and death times
-numberOfTargets = 1;
-targetPriors.birthTimes = ones(1, numberOfTargets); %sort(randi([1 simulationLength], [1 numberOfTargets]));
-targetPriors.deathTimes = simulationLength*ones(1, numberOfTargets); %randi([1 simulationLength], [1 numberOfTargets]) + targetPriors.birthTimes;
-targetPriors.deathTimes(targetPriors.deathTimes > simulationLength) = simulationLength;
+targetPriors.birthTimes = ones(1, numberOfTargets);
+targetPriors.deathTimes = simulationLength*ones(1, numberOfTargets);
 %% Noise parameters
 noiseMean = zeros(model.zDimension, 1);
-noiseCovariance = (2^2)*eye(model.zDimension);
+noiseCovariance = (1^2)*eye(model.zDimension);
 %% Target Priors
 % Means
-%{
-positionIndex = randi([1 model.numberOfSpawningLocations], [1 numberOfTargets]);
+positionIndex = 1:model.numberOfSpawningLocations; %randi([1 model.numberOfSpawningLocations], [1 numberOfTargets]);
 positions = model.spawnMeans(1:2, positionIndex);
 velocities = ones(2, numberOfTargets);
 targetPriors.means = [positions; velocities + randn([2 numberOfTargets])];
-%}
-targetPriors.means = [-400; -250; 2; 1];
 % Covariance
 targetPriors.covariances = reshape(repmat(model.spawnCovariance, [1 numberOfTargets]), [model.xDimension model.xDimension numberOfTargets]);
 %% Add in initial targets

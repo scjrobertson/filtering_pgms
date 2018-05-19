@@ -1,6 +1,5 @@
 % Run the approximate Jpdaf
 close all; clc;
-addpath ../common ../statisticsToolBox;
 warning off; %% Right division is iffy sometimes.
 %% Load the model
 model = generateNonLinearModel(20, 0.95);
