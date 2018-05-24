@@ -4,16 +4,16 @@ warning off; %% Right division is iffy sometimes.
 numberOfTrials = 50;
 numberOfSimulationsPerTrial = 5000;
 simulationLength = 250;
-numberOfTargets = 2;
+numberOfTargets = 15;
 eOspaMean = zeros(numberOfSimulationsPerTrial, numberOfTrials);
 hOspaMean = zeros(numberOfSimulationsPerTrial, numberOfTrials);
 %% Parameter
-variableParameter = linspace(5, 250, numberOfTrials);
+variableParameter = linspace(0, 1, numberOfTrials); variableParameter(end) = 0.99;
 %% Run the trials
 for i = 1:numberOfTrials
     fprintf('Trial %d\n', i);
     %% Generate the model
-    model = generateModel(variableParameter(i), 0.75);
+    model = generateModel(20, variableParameter(i));
     %% Iterate through the simulations
     eOspa = zeros(simulationLength, numberOfSimulationsPerTrial);
     hOspa = zeros(simulationLength, numberOfSimulationsPerTrial);
@@ -48,7 +48,7 @@ bar(variableParameter, meanEOspa);
 errorbar(variableParameter, meanEOspa, stdDevEOspa, 'r.');
 set(gca,'xtick', variableParameter);
 xlabel('\lambda_{c}'); ylabel('E-OSPA (m)');
-matlab2tikz('resources/multiplePdaf/multiplePdafClutterTrialsEOspa.tex');
+matlab2tikz('resources/jpdafExample/jpdafDetectionTrialsEOspa.tex');
 %% Plot a bar chart for the E-OSPA
 indices = find(meanHOspa-stdDevHOspa < 0);
 stdDevHOspa(indices) = meanHOspa(indices);
@@ -58,4 +58,4 @@ bar(variableParameter, meanHOspa);
 errorbar(variableParameter, meanHOspa, stdDevHOspa, 'r.');
 set(gca,'xtick', variableParameter);
 xlabel('\lambda_{c}'); ylabel('H-OSPA (m)');
-matlab2tikz('resources/multiplePdaf/multiplePdafClutterTrialsHOspa.tex');
+matlab2tikz('resources/jpdafExample/jpdafDetectionTrialsHOspa.tex');

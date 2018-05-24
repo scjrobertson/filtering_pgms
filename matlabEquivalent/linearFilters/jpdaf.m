@@ -79,9 +79,9 @@ for i = 2:simulationLength
         associationMatrix(:, 2:end) = repmat(normalisingConstants, [1 numberOfMeasurements]).*exp(-0.5*rightProduct);
         %% Loopy Belief Propagation
         clutterLikelihoods = ones(1, numberOfMeasurements)/model.observationSpaceVolume;
-        %[updatedAssociationMatrix, ~] = loopyBeliefPropagation(associationMatrix, clutterLikelihoods, 10e-6, 5); % JPDAF
-        associationMatrix(:, 1) = associationMatrix(:, 1)./model.observationSpaceVolume;
-        updatedAssociationMatrix = associationMatrix./sum(associationMatrix, 2); %Multiple instance of PDAFs
+        [updatedAssociationMatrix, ~] = loopyBeliefPropagation(associationMatrix, clutterLikelihoods, 10e-6, 5); % JPDAF
+        %associationMatrix(:, 1) = associationMatrix(:, 1)./model.observationSpaceVolume;
+        %updatedAssociationMatrix = associationMatrix./sum(associationMatrix, 2); %Multiple instance of PDAFs
         %% Update states
         % Means
         associationProbabilties =  permute(reshape(updatedAssociationMatrix, [1 targetNumber numberOfMeasurements+1]), [1 3 2]);

@@ -10,5 +10,5 @@ tic; stateEstimates = jpdaf(model, targetPriors, measurements); toc;
 %tic; stateEstimates = jipdafWithLoops(model, measurements); toc;
 %tic; stateEstimates = jipdaf(model, measurements); toc;
 %% Run the JIPDAF
-plotResults(model, groundTruth, stateEstimates, measurements, true);
+%plotResults(model, groundTruth, stateEstimates, measurements, true);
 %resultsToTikz(model, groundTruth, stateEstimates, measurements, 'resources/pdafFailure/pdafExample');

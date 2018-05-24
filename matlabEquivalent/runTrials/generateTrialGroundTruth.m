@@ -41,10 +41,10 @@ noiseMean = zeros(model.zDimension, 1);
 noiseCovariance = (1^2)*eye(model.zDimension);
 %% Target Priors
 % Means
-positionIndex = [1 3]; %1:model.numberOfSpawningLocations; %randi([1 model.numberOfSpawningLocations], [1 numberOfTargets]);
+positionIndex = 1:2:(2*numberOfTargets); %1:model.numberOfSpawningLocations; %randi([1 model.numberOfSpawningLocations], [1 numberOfTargets]);
 positions = model.spawnMeans(1:2, positionIndex);
-velocities = [2 2; 1 1]; %ones(2, numberOfTargets);
-targetPriors.means = [positions; velocities + randn([2 numberOfTargets])];
+velocities = ones(2, numberOfTargets) + randn([2 numberOfTargets]);
+targetPriors.means = [positions; velocities];
 % Covariance
 targetPriors.covariances = reshape(repmat(model.spawnCovariance, [1 numberOfTargets]), [model.xDimension model.xDimension numberOfTargets]);
 %% Add in initial targets
