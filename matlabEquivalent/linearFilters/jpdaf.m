@@ -23,6 +23,10 @@ function stateEstimates = jpdaf(model, targetPriors, measurements)
 %           time-step of the simulation.
 %   Output
 %       stateEstimates - struct. A structure with the following fields.
+%           uniqueLables - (1, ) array. A set of all track labels used in
+%               the simulation -- for plotting purposes.
+%           labels - (1, m) cell. Contains target 'identity' for each
+%               track -- for plotting purposes.
 %           means - (1, m) cell. Contains the state estimates means.
 %           covariances - (1, m) cell. Contains the state estimates
 %               covariance matrices.
@@ -39,6 +43,8 @@ mu = targetPriors.means(:, targetLabels);
 S = targetPriors.covariances(:, :, targetLabels);
 targetNumber = size(targetLabels, 2);
 %% State estimates
+stateEstimates.uniqueLabels = targetLabels;
+stateEstimates.labels = cell(1, simulationLength); stateEstimates.labels{1} = targetLabels;
 stateEstimates.means = cell(1, simulationLength); stateEstimates.means{1} = mu;
 stateEstimates.covariances = cell(1, simulationLength); stateEstimates.covariances{1} = S;
 stateEstimates.cardinality = zeros(1, simulationLength); stateEstimates.cardinality(1) = targetNumber;
@@ -73,7 +79,9 @@ for i = 2:simulationLength
         associationMatrix(:, 2:end) = repmat(normalisingConstants, [1 numberOfMeasurements]).*exp(-0.5*rightProduct);
         %% Loopy Belief Propagation
         clutterLikelihoods = ones(1, numberOfMeasurements)/model.observationSpaceVolume;
-        [updatedAssociationMatrix, ~] = loopyBeliefPropagation(associationMatrix, clutterLikelihoods, 10e-6, 5);
+        %[updatedAssociationMatrix, ~] = loopyBeliefPropagation(associationMatrix, clutterLikelihoods, 10e-6, 5); % JPDAF
+        associationMatrix(:, 1) = associationMatrix(:, 1)./model.observationSpaceVolume;
+        updatedAssociationMatrix = associationMatrix./sum(associationMatrix, 2); %Multiple instance of PDAFs
         %% Update states
         % Means
         associationProbabilties =  permute(reshape(updatedAssociationMatrix, [1 targetNumber numberOfMeasurements+1]), [1 3 2]);
@@ -112,6 +120,8 @@ for i = 2:simulationLength
         targetNumber = size(targetLabels, 2);
     end 
     %% Save the data
+    stateEstimates.uniqueLabels = union(stateEstimates.uniqueLabels, targetLabels);
+    stateEstimates.labels{i} = targetLabels;
     stateEstimates.means{i} = mu;
     stateEstimates.covariances{i} = S;
     stateEstimates.cardinality(i) = targetNumber;

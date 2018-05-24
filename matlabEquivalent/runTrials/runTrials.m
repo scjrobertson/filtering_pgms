@@ -1,11 +1,10 @@
 close all; clc;
-addpath ../common/ ../statisticsToolBox/ ../linearFilters/ ../matlab2tikz/src;
 warning off; %% Right division is iffy sometimes.
 %% Trial properties
 numberOfTrials = 50;
 numberOfSimulationsPerTrial = 5000;
 simulationLength = 250;
-numberOfTargets = 60;
+numberOfTargets = 2;
 eOspaMean = zeros(numberOfSimulationsPerTrial, numberOfTrials);
 hOspaMean = zeros(numberOfSimulationsPerTrial, numberOfTrials);
 %% Parameter
@@ -33,6 +32,7 @@ for i = 1:numberOfTrials
         eOspaMean(j, i) = mean(eOspa(:, j), 1);
         hOspaMean(j, i) = mean(hOspa(:, j), 1);
     end
+    save('resources/cache/simulationResults.mat', 'eOspaMean', 'hOspa');
 end
 %% Calculate the mean Euclidean and Hellinger OSPA
 meanEOspa = mean(eOspaMean, 1);
@@ -48,7 +48,7 @@ bar(variableParameter, meanEOspa);
 errorbar(variableParameter, meanEOspa, stdDevEOspa, 'r.');
 set(gca,'xtick', variableParameter);
 xlabel('\lambda_{c}'); ylabel('E-OSPA (m)');
-matlab2tikz('resources/jpdafClutterTrialsEOspa.tex');
+matlab2tikz('resources/multiplePdaf/multiplePdafClutterTrialsEOspa.tex');
 %% Plot a bar chart for the E-OSPA
 indices = find(meanHOspa-stdDevHOspa < 0);
 stdDevHOspa(indices) = meanHOspa(indices);
@@ -58,4 +58,4 @@ bar(variableParameter, meanHOspa);
 errorbar(variableParameter, meanHOspa, stdDevHOspa, 'r.');
 set(gca,'xtick', variableParameter);
 xlabel('\lambda_{c}'); ylabel('H-OSPA (m)');
-matlab2tikz('resources/jpdafClutterTrialsHOspa.tex');
+matlab2tikz('resources/multiplePdaf/multiplePdafClutterTrialsHOspa.tex');
